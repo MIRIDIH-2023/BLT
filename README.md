@@ -39,6 +39,7 @@ pip install jaxlib==0.1.69+cuda110 -f https://storage.googleapis.com/jax-release
 Replaces references to jax.Array with jax.numpy.DeviceArray.
 
 [layout-blt/utils/layout_bert_fast_decode.py commit error](https://github.com/google-research/google-research/commit/89bd283df95962480163778d32ca62baec06392e#diff-d50bc9b308611a6985e4b5a22be2550862a65a951ab4c76909e6318076e9d07e)
+
 [layout-blt/utils/layout_fast_decode.py commit error](https://github.com/google-research/google-research/commit/89bd283df95962480163778d32ca62baec06392e#diff-54e5487c1e5f718c0155f009478d5f506d842f21865583c1a8dd5fdd252314a8)
 
 
