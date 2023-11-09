@@ -473,6 +473,168 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
     real_samples = jnp.concatenate(real_sample_list, axis=0)
     return generated_samples, real_samples
 
+  def test_with_backgroundImage(self,
+           batch_size=1,
+           iterative_nums=None,
+           conditional="none",
+           max_decode_len=128,
+           use_vertical=False,
+           sample_step_num=10,
+           prior=None,
+           max_asset_num=22,
+           vertical_idx=0,
+           idx=None):
+    """Runs a test run."""
+    rng = jax.random.PRNGKey(self.config.seed)
+    np.random.seed(self.config.seed)
+    # Make sure each host uses a different RNG.
+    rng = jax.random.fold_in(rng, jax.process_index())
+    rng, model_rng, data_rng = jax.random.split(rng, 3)
+    data_rng = jax.random.fold_in(data_rng, jax.process_index())
+    dataset = self.config.dataset
+
+    init_batch = jnp.ones(
+        (batch_size, max_decode_len))
+    init_label = jnp.ones((batch_size, 1))
+    init_batch = dict(inputs=init_batch, labels=init_label)
+    model_dict, state = self.create_train_state(model_rng, init_batch)
+
+    test_checkpoint_dir = os.path.join(self.workdir, "checkpoints")
+
+    ckpt_path = test_checkpoint_dir
+    state = task_manager.restore_checkpoint(state, ckpt_path)
+    state = flax_utils.replicate(state)
+
+    test_ds, vocab_size, pos_info, image_link = input_pipeline.get_dataset(
+        batch_size,
+        self.config.dataset_path,
+        jax.local_device_count(),
+        "test/json_data",
+        max_decode_len,
+        add_bos=False,
+        dataset_name=dataset,
+        idx=idx,
+        is_background_test=True)
+    
+    logits_mask, offset = self.make_mask(vocab_size, pos_info,
+                                         max_decode_len,
+                                         self.layout_dim)
+
+    sample_one_batch_fn = functools.partial(
+        self.sample_one_batch,
+        pos_info=pos_info,
+        iterative_num=iterative_nums,
+        conditional=conditional,
+        logits_mask=logits_mask)
+    p_generate_batch = jax.pmap(
+        functools.partial(
+            sample_one_batch_fn,
+            model_dict=model_dict,
+        ),
+        axis_name="batch")
+    
+    test_iter = iter(test_ds)  # pytype: disable=wrong-arg-types
+    generated_sample_list, real_sample_list = [], []
+    assert iterative_nums is not None and len(iterative_nums) == 3
+    iterative_nums = np.array(iterative_nums)
+    def tohost(x):
+      """Collect batches from all devices to host and flatten batch dimensions."""
+      n_device, n_batch, *remaining_dims = x.shape
+      return np.array(x).reshape((n_device * n_batch,) + tuple(remaining_dims))
+
+    if conditional == "none":
+      total_time = 0.
+      for idx in range(sample_step_num):
+        if use_vertical:
+          test_label = jnp.full((batch_size, 1), vertical_idx)
+        else:
+          test_label = None
+        asset_num = np.random.choice(max_asset_num, batch_size, p=prior) + 1
+        rng, sample_rng = jax.random.split(rng, 2)
+        p_rng = jax.random.split(sample_rng, jax.local_device_count())
+
+        # All mask symbols.
+        asset_num = jnp.array(asset_num, dtype="int32")[Ellipsis, None]
+        # element_num = asset_num * 5
+        element_num = asset_num * self.total_dim
+        masked_batch = jnp.full((batch_size, 128), 3)
+
+        position_ids = jnp.arange(masked_batch.shape[-1])[None, :]
+        # Pads masked batch.
+        masked_batch = jnp.where(position_ids >= element_num, 0, masked_batch)
+        masked_batch = common_utils.shard(masked_batch)
+        test_label = common_utils.shard(test_label)
+
+        p_rng = jax.random.split(rng, jax.local_device_count())
+        start_time = time.time()
+
+        sample_layouts = p_generate_batch(masked_batch, test_label, p_rng,
+                                          state)
+        total_time += time.time() - start_time
+        start_time = time.time()
+        sample_layouts = tohost(sample_layouts)
+        generated_sample_list.append(sample_layouts - offset)
+
+      generated_samples = jnp.concatenate(generated_sample_list, axis=0)
+      real_samples = None
+      logging.info("decoding time: (%.4f)", total_time)
+      return generated_samples, real_samples, image_link
+
+    for idx, test_batch in enumerate(test_iter):
+      if idx >= sample_step_num:
+        break
+      asset_num = np.random.choice(max_asset_num, batch_size, p=prior) + 1
+      rng, sample_rng = jax.random.split(rng, 2)
+      p_rng = jax.random.split(sample_rng, jax.local_device_count())
+      test_batch = jax.tree_map(lambda x: x._numpy(), test_batch)  # pylint: disable=protected-access
+      test_batch, _ = self.preprocess_batch(test_batch, batch_size, dataset,
+                                            use_vertical)
+      if test_batch is None or (conditional == "none" and
+                                idx == sample_step_num):
+        break
+      test_batch = tohost(test_batch["targets"])
+      if use_vertical:
+        test_label = jnp.full((batch_size, 1), vertical_idx)
+      else:
+        test_label = None
+
+      # All mask symbols.
+      if conditional != "none":
+        # asset_num = jnp.sum(test_batch > 0, axis=1, keepdims=True) // 5
+        asset_num = jnp.sum(
+            test_batch > 0, axis=1, keepdims=True) // self.total_dim
+      else:
+        asset_num = jnp.array(asset_num, dtype="int32")[Ellipsis, None]
+      # element_num = asset_num * 5
+      element_num = asset_num * self.total_dim
+      masked_batch = jnp.full_like(test_batch, 3)
+
+      position_ids = jnp.arange(masked_batch.shape[-1])[None, :]
+      # is_asset = position_ids % 5 == 0
+      # is_size = (position_ids % 5 == 1) | (position_ids % 5 == 2)
+      is_asset = position_ids % self.total_dim == 0
+      is_size = functools.reduce(lambda x, y: x | y, [
+          position_ids % self.total_dim == i
+          for i in range(1, self.layout_dim + 1)
+      ])
+      if conditional == "a+s":
+        masked_batch = jnp.where(is_asset | is_size, test_batch, masked_batch)
+      elif conditional == "a":
+        masked_batch = jnp.where(is_asset, test_batch, masked_batch)
+      # Pads masked batch.
+      masked_batch = jnp.where(position_ids >= element_num, 0, masked_batch)
+      masked_batch = common_utils.shard(masked_batch)
+
+      p_rng = jax.random.split(rng, jax.local_device_count())
+      test_label = common_utils.shard(test_label)
+      sample_layouts = p_generate_batch(masked_batch, test_label, p_rng, state)
+      sample_layouts = tohost(sample_layouts)
+      generated_sample_list.append(sample_layouts - offset)
+      real_sample_list.append(test_batch - offset)
+    generated_samples = jnp.concatenate(generated_sample_list, axis=0)
+    real_samples = jnp.concatenate(real_sample_list, axis=0)
+    return generated_samples, real_samples, image_link
+
   def sample_step(self, rng, state, model_dict, pos_info):
     """Samples layouts just for visualization during training."""
     pass

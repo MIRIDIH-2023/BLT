@@ -79,30 +79,53 @@ def main(argv):
   if FLAGS.mode == "train":
     trainer.train()
   elif FLAGS.mode == "test":
-    generated_samples, real_samples = trainer.test(conditional="a", iterative_nums=[10, 10, 10])
-    print()
-    print("====== result ======")
+    # generated_samples, real_samples = trainer.test(conditional="none", iterative_nums=[10, 10, 10])
+    # print()
+    # print("====== result ======")
     # print("generated samples: \n", generated_samples)
     # print("real samples: \n", real_samples)
     # data = plot_layout.parse_layout_sample(data=generated_samples, dataset_type="CATEGORIZED")
-    for i in range(10) :
-      plot_layout.plot_sample(
-        data=onp.array(generated_samples[i][-1]),
-        target_width=500,
-        target_height=500,
+    # for i in range(10) :
+    #   plot_layout.plot_sample_with_PIL(
+    #     data=onp.array(generated_samples[i][-1]),
+    #     target_width=500,
+    #     target_height=500,
+    #     dataset_type="CATEGORIZED",
+    #     border_size= 1,
+    #     thickness= 4,
+    #     im_type=f"infer{i}_{FLAGS.workdir}")
+    #   print()
+    #   plot_layout.plot_sample_with_PIL(
+    #     data=onp.array(real_samples[i]),
+    #     target_width=500,
+    #     target_height=500,
+    #     dataset_type="CATEGORIZED",
+    #     border_size= 1,
+    #     thickness= 4,
+    #     im_type=f"real{i}_{FLAGS.workdir}")
+    while(1) :
+      idx = None
+      idx = int(input("enter the index number (or -1 to quit): "))
+      if idx == -1 : break
+
+      generated_samples, real_samples, image_link = trainer.test_with_backgroundImage(conditional="a+s", iterative_nums=[22, 22, 22], idx=idx)
+      plot_layout.plot_sample_with_PIL(
+        data=onp.array(generated_samples[0][-1]),
         dataset_type="CATEGORIZED",
         border_size= 1,
-        thickness= 4,
-        im_type=f"infer{i}_{FLAGS.workdir}")
+        thickness= 6,
+        im_type=f"infer{idx}_{FLAGS.workdir}",
+        idx=idx, 
+        image_link=image_link)
       print()
-      plot_layout.plot_sample(
-        data=onp.array(real_samples[i]),
-        target_width=500,
-        target_height=500,
+      plot_layout.plot_sample_with_PIL(
+        data=onp.array(real_samples[0]),
         dataset_type="CATEGORIZED",
         border_size= 1,
-        thickness= 4,
-        im_type=f"real{i}_{FLAGS.workdir}")
+        thickness= 6,
+        im_type=f"real{idx}_{FLAGS.workdir}",
+        idx=idx,
+        image_link=image_link)
   else:
     raise NotImplementedError
 

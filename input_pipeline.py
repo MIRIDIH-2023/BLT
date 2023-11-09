@@ -96,7 +96,9 @@ def get_dataset(batch_size,
                 max_length,
                 add_bos=True,
                 dataset_name="RICO",
-                shuffle=False):
+                shuffle=False,
+                idx=None,
+                is_background_test=False):
   """Obtain dataset from preprocessed json data.
 
   Args:
@@ -116,7 +118,7 @@ def get_dataset(batch_size,
   assert batch_size % n_devices == 0
   ds_path = os.path.join(dataset_folder, ds_file)
   # shuffle = True if "train" not in ds_file else shuffle
-  dataset = LayoutDataset(dataset_name, ds_path, add_bos, shuffle)
+  dataset = LayoutDataset(dataset_name, ds_path, add_bos, shuffle, idx=idx, is_background_test=is_background_test)
 
   class_range = [dataset.offset_class, dataset.number_classes]
   center_x_range = [dataset.offset_center_x, dataset.resolution_w]
@@ -129,7 +131,9 @@ def get_dataset(batch_size,
   ds = dataset.setup_tf_dataset(
       batch_size, max_length, group_data_by_size=False)
   vocab_size = dataset.get_vocab_size()
-  return ds, vocab_size, pos_info
+
+  if dataset.image_link is not None : return ds, vocab_size, pos_info, dataset.image_link
+  else : return ds, vocab_size, pos_info
 
 
 def get_all_dataset(batch_size,
@@ -178,7 +182,9 @@ class LayoutDataset:
                shuffle = False,
                resolution_w = DEFAULT_RESOLUTION_WIDTH,
                resolution_h = DEFAULT_RESOLUTION_HEIGHT,
-               limit = 22):
+               limit = 22,
+               idx=None,
+               is_background_test=False):
     """Sets up the dataset instance, and computes the vocabulary.
 
     Args:
@@ -208,7 +214,11 @@ class LayoutDataset:
     label_names = datasets_info.get_label_name(self.dataset_name)
     label_to_id = datasets_info.get_label_to_id_map(self.dataset_name)
 
-    data = converter.load_categorized(path=path, label_names=label_names, label_to_id=label_to_id)
+    data, image_link = converter.load_categorized(path=path, 
+                                      label_names=label_names,
+                                      label_to_id=label_to_id,
+                                      idx=idx,
+                                      with_background_test=is_background_test)
 
     self.add_bos = add_bos
     self.data = _normalize_entries(data, shuffle)
@@ -227,6 +237,7 @@ class LayoutDataset:
     self.offset_height = self.offset_width + self.resolution_h
     self.limit = limit
     self.shuffle = shuffle
+    self.image_link = image_link
 
   def get_vocab_size(self):
     # Special symbols + num_classes +

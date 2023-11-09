@@ -28,9 +28,12 @@ from dataset import categorized_info
 import numpy as np
 import tensorflow as tf
 import matplotlib.patches as patches
-from PIL import Image
+from PIL import Image, ImageFilter
 from PIL import ImageFont
 from PIL import ImageDraw
+
+from io import BytesIO
+import requests
 
 
 def parse_entry(
@@ -255,12 +258,14 @@ def plot_sample_with_plt(data,
     fig.savefig(f"/home/work/increased_en_data/BLT/result/low_loss/{im_type}.png")
 
 def plot_sample_with_PIL(data,
-                target_width,
-                target_height,
-                dataset_type,
+                target_width=500,
+                target_height=500,
+                dataset_type="CATEGORIZED",
                 border_size=1,
                 thickness=4,
-                im_type="no_input"):
+                im_type="no_input",
+                idx=None,
+                image_link=None):
     """Draws an image from a sequence of bounding boxes.
 
     Args:
@@ -276,12 +281,24 @@ def plot_sample_with_PIL(data,
     Returns:
         The image as an np.ndarray of np.uint8 type.
     """
-    image = np.zeros((target_height, target_width, 3), dtype=np.uint8) + 255
+    image = None
+    if image_link is not None and idx is not None :
+      try:
+        image = Image.open(BytesIO(requests.get(image_link).content))
+        if im_type.startswith("infer") : image = image.filter(ImageFilter.GaussianBlur(radius=10))
+        target_width, target_height = image.size
+      except:
+          print(f"Error at loading image, {image_link}")
+          image = None
+    else :
+      image = Image.new("RGB", (target_width, target_height), "white")
+
+    if image is None : return
 
     data = data[data >= 0]
 
-    blank_image  = Image.new("RGB", (width, height), "white")
-    draw = ImageDraw.Draw(blank_image)
+    # blank_image  = Image.new("RGB", (target_width, target_height), "white")
+    draw = ImageDraw.Draw(image)
     font = ImageFont.load_default()
     text_color = (0, 0, 0)
 
@@ -308,7 +325,7 @@ def plot_sample_with_PIL(data,
         draw.text((x_min, y_min), class_name, fill=text_color, font=font)
 
     # Show the image
-    fig.savefig(f"/home/work/increased_en_data/BLT/result/lessOverlap/{im_type}.png")
+    image.save(f"/home/work/increased_en_data/BLT/result/exp3/a_s/{im_type}.png")
 
 def plot_sample_with_background(data,
                 target_width,
@@ -336,7 +353,7 @@ def plot_sample_with_background(data,
 
     data = data[data >= 0]
 
-    blank_image  = Image.new("RGB", (width, height), "white")
+    blank_image  = Image.new("RGB", (target_width, target_height), "white")
     draw = ImageDraw.Draw(blank_image)
     font = ImageFont.load_default()
     text_color = (0, 0, 0)
@@ -364,5 +381,5 @@ def plot_sample_with_background(data,
         draw.text((x_min, y_min), class_name, fill=text_color, font=font)
 
     # Show the image
-    fig.savefig(f"/home/work/increased_en_data/BLT/result/lessOverlap/{im_type}.png")
+    plt.savefig(f"/home/work/increased_en_data/BLT/result/low_loss/{im_type}.png")
 
