@@ -13,7 +13,7 @@ def load_text_infos(json_data, im_width) :
     for text_info in json_data["form"] :
         # rotate가 0이 아니면 텍스트 데이터로 사용하지 않음
         if(text_info["rotate"] != "0" or text_info["text"] == None or text_info["text"] == "" or text_info["text"] == " ") : continue
-        left, top, right, bottom = text_info["raw_bbox"]
+        left, top, right, bottom = text_info["box"]
 
         center_x, center_y = float((left + right) / 2), float((top + bottom) / 2)
         width_ = right - left
@@ -30,7 +30,9 @@ def load_text_infos(json_data, im_width) :
 
         if ratio_text_size <= 0 : continue
 
-        split_cnt = len(text_info["text"].split('\\n'))
+        split_cnt1 = len(text_info["text"].split('\n'))
+        split_cnt2 = len(text_info["text"].split('\\n'))
+        split_cnt = split_cnt1 if split_cnt1 > split_cnt2 else split_cnt2
         if (ratio_text_size + line_space) <= 0 : line_space = 0
         line_nums = int(math.floor(float(height_ / (ratio_text_size + line_space))))
         line_nums = line_nums if line_nums > 0 else 1
@@ -62,10 +64,12 @@ def load_text_infos(json_data, im_width) :
 
     return text_infos
 
-def load_categorized(path, label_names, label_to_id) :
+def load_categorized(path, label_names, label_to_id, idx, with_background_test=False) :
     data = []
+    image_link=None
 
-    file_name_lst = tqdm(os.listdir(path))
+    file_name_lst = os.listdir(path)
+    file_name_lst = [file_name_lst[idx]] if with_background_test else tqdm(file_name_lst) 
     for file_name in file_name_lst :
         # pickle file open
         file_path = os.path.join(path, file_name)
@@ -106,7 +110,7 @@ def load_categorized(path, label_names, label_to_id) :
                 
                 if idx == 3 and label == "text_" :
                     label += f"3_{pair[1]}" if pair[1] < 4 else "3_3_over"
-
+                    
             template["children"].append({
                 "category_id" : label_to_id[label],
                 "center" : [pair[2], pair[3]],
@@ -116,7 +120,7 @@ def load_categorized(path, label_names, label_to_id) :
 
         # load tags
         for info in json_data["tags_info"] :
-            if info["tag"] not in label_names: continue
+            if info["tag"] not in label_names or info["rotate"] != "0": continue
 
             left, top, right, bottom = info["box"]
             center_x, center_y = float((left + right) / 2), float((top + bottom) / 2)
@@ -156,9 +160,11 @@ def load_categorized(path, label_names, label_to_id) :
                 "height" : height_
             })
 
+        if with_background_test : image_link = json_data["thumbnail_url"]
+
         data.append(template)
     
-    return data
+    return data, image_link
 
 def miri_load(path, label_names, label_to_id) :
     data = []
