@@ -65,7 +65,7 @@ def _normalize_entries(documents, shuffle=False):
 
   # TODO : 각 json 파일 형태 유추, 잘 되는지 확인 
   # [ {"children" : [ {"cneter" : [int, int], "width" : int, "height": int }, {}, {} ], "doc_width", "doc_height"}, {}, {} ]
-  print("======= Normalize! =======")
+  print("======= Normalize! ======= shuffle: ", shuffle)
 
   for document in tqdm(documents):
     children = document["children"]

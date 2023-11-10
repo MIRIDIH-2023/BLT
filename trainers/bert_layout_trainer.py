@@ -37,6 +37,7 @@ from trainers import base_trainer
 from utils import layout_bert_fast_decode
 from utils import task_manager
 import numpy as np
+import os
 
 
 @flax.struct.dataclass

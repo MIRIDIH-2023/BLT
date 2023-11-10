@@ -23,9 +23,9 @@ def get_config():
 
   config = ml_collections.ConfigDict()
   # Exp info
-  config.dataset_path = "/home/work/increased_en_data/BLT/data/"
+  config.dataset_path = "/home/work/increased_en_data/BLT/data2/"
   config.dataset = "CATEGORIZED"
-  config.vocab_size = 152
+  config.vocab_size = 154
   config.experiment = "bert_layout"
   config.model_class = "bert_layout"
   config.image_size = 256
@@ -40,8 +40,8 @@ def get_config():
   config.train_shuffle = True
   config.eval_pad_last_batch = False
   config.eval_batch_size = 64
-  config.num_train_steps = 100_000
-  config.checkpoint_every_steps = 10_000
+  config.num_train_steps = 12_000
+  config.checkpoint_every_steps = 5000
   config.eval_every_steps = 1000
   config.num_eval_steps = 100
 
@@ -62,7 +62,7 @@ def get_config():
   config.label_smoothing = 0.0
   config.sampling_method = "top-p"
   config.use_vertical_info = False
-  config.test_checkpoint_dir = "/home/work/increased_en_data/BLT/exp0_exceptNum/checkpoints"
+  # config.test_checkpoint_dir = "/home/work/increased_en_data/BLT/exp3_get_low_loss/checkpoints"
 
   # Optimizer info
   config.optimizer = ml_collections.ConfigDict()

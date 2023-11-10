@@ -108,13 +108,13 @@ def main(argv):
       idx = int(input("enter the index number (or -1 to quit): "))
       if idx == -1 : break
 
-      generated_samples, real_samples, image_link = trainer.test_with_backgroundImage(conditional="a+s", iterative_nums=[22, 22, 22], idx=idx)
+      generated_samples, real_samples, image_link = trainer.test_with_backgroundImage(conditional="a", iterative_nums=[22, 22, 22], idx=idx)
       plot_layout.plot_sample_with_PIL(
         data=onp.array(generated_samples[0][-1]),
         dataset_type="CATEGORIZED",
         border_size= 1,
         thickness= 6,
-        im_type=f"infer{idx}_{FLAGS.workdir}",
+        im_type=f"{idx}_infer",
         idx=idx, 
         image_link=image_link)
       print()
@@ -123,7 +123,7 @@ def main(argv):
         dataset_type="CATEGORIZED",
         border_size= 1,
         thickness= 6,
-        im_type=f"real{idx}_{FLAGS.workdir}",
+        im_type=f"{idx}_real",
         idx=idx,
         image_link=image_link)
   else:

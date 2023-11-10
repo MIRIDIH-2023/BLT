@@ -285,7 +285,7 @@ def plot_sample_with_PIL(data,
     if image_link is not None and idx is not None :
       try:
         image = Image.open(BytesIO(requests.get(image_link).content))
-        if im_type.startswith("infer") : image = image.filter(ImageFilter.GaussianBlur(radius=10))
+        if im_type.endswith("_infer") : image = Image.new("RGB", (target_width, target_height), "white")
         target_width, target_height = image.size
       except:
           print(f"Error at loading image, {image_link}")
@@ -325,7 +325,7 @@ def plot_sample_with_PIL(data,
         draw.text((x_min, y_min), class_name, fill=text_color, font=font)
 
     # Show the image
-    image.save(f"/home/work/increased_en_data/BLT/result/exp3/a_s/{im_type}.png")
+    image.save(f"/home/work/increased_en_data/BLT/result/exp5/a/{im_type}.png")
 
 def plot_sample_with_background(data,
                 target_width,

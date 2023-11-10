@@ -22,6 +22,9 @@ def load_text_infos(json_data, im_width) :
         width_ = right - left
         height_ = bottom - top
 
+        # data가 이상할 수도 있는 혹시 모를 방지 
+        if (width_ * height_) == 0 : continue
+
         doc_width , doc_height = text_info["sheet_size"]
         RATIO = im_width / doc_width
 
@@ -78,6 +81,51 @@ def load_text_infos(json_data, im_width) :
     }
 
     return text_infos
+
+# 이미지와 텍스트가 겹치는 정도에 따라 레이블을 반환
+def get_image_label(image_info, text_infos):
+    max_overlap_ratio = 0 # 이미지와 가장 많이 겹치는 텍스트의 겹치는 정도
+    image_box = image_info["box"]
+
+    for i in range(len(text_infos['text_coord_lr'])):
+        text_box = [text_infos['text_coord_lr'][i][0],
+                    text_infos['text_coord_tb'][i][0],
+                    text_infos['text_coord_lr'][i][1],
+                    text_infos['text_coord_tb'][i][1]]
+        text_area = (text_box[2] - text_box[0]) * (text_box[3] - text_box[1])
+
+        #overlap_box = [max(image_box[0], text_box[0]),
+        #               max(image_box[1], text_box[1]),
+        #               min(image_box[2], text_box[2]),
+        #               min(image_box[3], text_box[3])]
+        #overlap_area = (overlap_box[2] - overlap_box[0]) * (overlap_box[3] - overlap_box[1])
+
+        overlap_x = max(0, min(image_box[2], text_box[2]) - max(image_box[0], text_box[0]))
+        overlap_y = max(0, min(image_box[3], text_box[3]) - max(image_box[1], text_box[1]))
+        overlap_area = overlap_x * overlap_y
+
+        #가능한 최대 겹침 비율(나중에 쓸 수도 있음)
+        image_area = abs(image_box[2]-image_box[0]) * abs(image_box[3]-image_box[1])
+        possible_max_overlap_area_per_text =  image_area / text_area
+
+        if text_area == 0:
+          continue
+        overlap_ratio = overlap_area / text_area
+
+        # print("overlap ratio ", overlap_ratio)
+        # print("possible_overlap", possible_max_overlap_area_per_text)
+        # print()
+
+        if overlap_ratio > max_overlap_ratio:
+            max_overlap_ratio = overlap_ratio
+
+    # print()
+    if max_overlap_ratio > 0.8:
+        return "image_with_text"
+    elif max_overlap_ratio > 0.2:
+        return "image_partially_with_text"
+    else:
+        return "image_without_text"
 
 # path: data가 있는 폴더 경로
 # label_names: 사용하려는 XML tag이름
@@ -156,6 +204,9 @@ def load_categorized(path, label_names, label_to_id, idx, with_background_test=F
             center_x, center_y = float((left + right) / 2), float((top + bottom) / 2)
             width_ = right - left
             height_ = bottom - top
+
+            # data가 이상할 수도 있는 거 혹시 모를 방지 
+            if (width_ * height_) == 0 : continue
             
             # text의 bounding box넓이의 반보다 큰 것만 사용함
             # 작은 것들은 꾸미는 용도(sticker 등)이고 크게 template 내에서 비중을 차지하지 않는다는 가정
@@ -178,7 +229,7 @@ def load_categorized(path, label_names, label_to_id, idx, with_background_test=F
                 if (tb[0] < top or bottom < tb[1]) :
                     is_back_tb = False
 
-            if lr_dup or tb_dup : continue
+            # if lr_dup and tb_dup : continue
 
             # XML tag중 chart와 grid는 그대로 category로 사용
             if info["tag"] == "Chart" or info["tag"] == "GRID":
@@ -187,7 +238,10 @@ def load_categorized(path, label_names, label_to_id, idx, with_background_test=F
                 if is_back_lr and is_back_tb :
                     label = "background"
                 else :
-                    label = "image"
+                    label = get_image_label(info, text_infos)
+
+            # background는 안 씀
+            if label == "background" : continue
 
             template["children"].append({
                 "category_id" : label_to_id[label],
