@@ -37,7 +37,9 @@ COLORS = {
     "text_3_2": (175, 214, 130),
     "text_3_3": (74, 20, 141),
     "text_3_3_over": (226, 81, 232),
-    "image": (256, 139, 101),
+    "image_with_text": (102, 152, 216),
+    "image_partially_with_text": (24, 148, 22),
+    "image_without_text": (63, 134, 221),
     "background": (205, 102, 154),
     "Chart": (241, 98, 147),
     "GRID": (103, 58, 184)
@@ -60,7 +62,9 @@ LABEL_NAMES = (
     "text_3_2",
     "text_3_3",
     "text_3_3_over",
-    "image",
+    "image_with_text",
+    "image_partially_with_text",
+    "image_without_text",
     "background",
     "Chart",
     "GRID"
