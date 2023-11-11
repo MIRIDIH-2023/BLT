@@ -252,6 +252,8 @@ def load_categorized(path, label_names, label_to_id, idx, with_background_test=F
 
         if with_background_test : image_link = json_data["thumbnail_url"]
 
+        if len(template["children"]) == 0 : continue
+        
         data.append(template)
     
     return data, image_link
