@@ -545,7 +545,7 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
       return np.array(x).reshape((n_device * n_batch,) + tuple(remaining_dims))
 
     def find_indices_of_no_mask_id(test_batch, values, is_asset):
-      true_indices = [index for index, value in enumerate((test_batch[0]-offset).tolist()) if value in values and is_asset[0][index]]
+      true_indices = [index for index, value in enumerate((test_batch[0]-offset[0]).tolist()) if value in values and is_asset[0][index]]
       return true_indices
 
     def add_no_mask_to_size_and_pos(true_indices):
@@ -669,7 +669,7 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
       img_true_indices = find_indices_of_no_mask_id(test_batch, except_text_label, is_asset)
       txt_true_indices = find_indices_of_no_mask_id(test_batch, text_label, is_asset)
 
-      if conditional == "custom":
+      if conditional.startswith("custom"):
         masked_batch = custom_decode( masked_batch=masked_batch,
                                       test_batch=test_batch,
                                       position_ids=position_ids,
