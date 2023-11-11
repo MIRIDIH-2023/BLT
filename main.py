@@ -108,24 +108,31 @@ def main(argv):
       idx = int(input("enter the index number (or -1 to quit): "))
       if idx == -1 : break
 
-      generated_samples, real_samples, image_link = trainer.test_with_backgroundImage(conditional="a", iterative_nums=[22, 22, 22], idx=idx)
+      inter = int(input("enter iter: "))
+      condition = input("enter decode condition (a or a+s): ")
+
+      generated_samples, real_samples, image_link = trainer.test_with_backgroundImage(conditional=condition, iterative_nums=[inter, inter, inter], idx=idx)
       plot_layout.plot_sample_with_PIL(
         data=onp.array(generated_samples[0][-1]),
+        workdir=FLAGS.workdir,
         dataset_type="CATEGORIZED",
         border_size= 1,
         thickness= 6,
-        im_type=f"{idx}_infer",
+        im_type=f"{idx}_iter{inter}_infer",
         idx=idx, 
-        image_link=image_link)
+        image_link=image_link,
+        conditional=condition)
       print()
       plot_layout.plot_sample_with_PIL(
         data=onp.array(real_samples[0]),
+        workdir=FLAGS.workdir,
         dataset_type="CATEGORIZED",
         border_size= 1,
         thickness= 6,
-        im_type=f"{idx}_real",
+        im_type=f"{idx}_iter{inter}_real",
         idx=idx,
-        image_link=image_link)
+        image_link=image_link,
+        conditional=condition)
   else:
     raise NotImplementedError
 

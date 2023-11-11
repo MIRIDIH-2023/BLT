@@ -40,7 +40,7 @@ def get_config():
   config.train_shuffle = True
   config.eval_pad_last_batch = False
   config.eval_batch_size = 64
-  config.num_train_steps = 12_000
+  config.num_train_steps = 50_000
   config.checkpoint_every_steps = 5000
   config.eval_every_steps = 1000
   config.num_eval_steps = 100

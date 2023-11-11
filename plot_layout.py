@@ -34,6 +34,7 @@ from PIL import ImageDraw
 
 from io import BytesIO
 import requests
+import os
 
 
 def parse_entry(
@@ -257,15 +258,32 @@ def plot_sample_with_plt(data,
     # Show the image
     fig.savefig(f"/home/work/increased_en_data/BLT/result/low_loss/{im_type}.png")
 
+def create_folder(conditional, exp, base_path):
+    # 폴더 경로 생성
+    exp = exp.split('/')[1]
+    if conditional == "a":
+        folder_path = os.path.join(base_path, exp.split('_')[0], conditional)
+    elif conditional == "a+s":
+        folder_path = os.path.join(base_path, exp.split('_')[0], conditional.replace('+', '_'))
+    else:
+        print("유효하지 않은 input1 값입니다.")
+        return None
+    
+    # 폴더 생성
+    os.makedirs(folder_path, exist_ok=True)
+    print(f"폴더가 생성되었습니다: {folder_path}")
+
+    return folder_path
+
 def plot_sample_with_PIL(data,
-                target_width=500,
-                target_height=500,
+                workdir,
                 dataset_type="CATEGORIZED",
                 border_size=1,
                 thickness=4,
                 im_type="no_input",
                 idx=None,
-                image_link=None):
+                image_link=None,
+                conditional="a"):
     """Draws an image from a sequence of bounding boxes.
 
     Args:
@@ -285,13 +303,14 @@ def plot_sample_with_PIL(data,
     if image_link is not None and idx is not None :
       try:
         image = Image.open(BytesIO(requests.get(image_link).content))
-        if im_type.endswith("_infer") : image = Image.new("RGB", (target_width, target_height), "white")
         target_width, target_height = image.size
+        if im_type.endswith("_infer") : image = Image.new("RGB", (target_width, target_height), "white")
+        # target_width, target_height = image.size
       except:
           print(f"Error at loading image, {image_link}")
           image = None
     else :
-      image = Image.new("RGB", (target_width, target_height), "white")
+      image = Image.new("RGB", (500, 500), "white")
 
     if image is None : return
 
@@ -325,61 +344,11 @@ def plot_sample_with_PIL(data,
         draw.text((x_min, y_min), class_name, fill=text_color, font=font)
 
     # Show the image
-    image.save(f"/home/work/increased_en_data/BLT/result/exp5/a/{im_type}.png")
 
-def plot_sample_with_background(data,
-                target_width,
-                target_height,
-                dataset_type,
-                border_size=1,
-                thickness=4,
-                im_type="no_input"):
-    """Draws an image from a sequence of bounding boxes.
+    basePath = "/home/work/increased_en_data/BLT/result"
+    folder_path = create_folder(conditional, workdir, basePath)
 
-    Args:
-        data: A sequence of bounding boxes. They must be in the 'networks output'
-        format (see dataset_entries_to_network_outputs).
-        target_width: Result image width.
-        target_height: Result image height.
-        dataset_type: Dataset type keyword. Necessary to assign labels.
-        border_size: Width of the border added to the image.
-        thickness: It is the thickness of the rectangle border line in px.
-        Thickness of -1 px will display each box with a colored box without text.
+    if folder_path is None : return
 
-    Returns:
-        The image as an np.ndarray of np.uint8 type.
-    """
-    image = np.zeros((target_height, target_width, 3), dtype=np.uint8) + 255
-
-    data = data[data >= 0]
-
-    blank_image  = Image.new("RGB", (target_width, target_height), "white")
-    draw = ImageDraw.Draw(blank_image)
-    font = ImageFont.load_default()
-    text_color = (0, 0, 0)
-
-    for idx in range(0, len(data), 5):
-        entry = data[idx:idx + 5]
-        _, class_name, color, bounding_box = parse_entry(dataset_type, entry)
-
-        width, height, center_x, center_y = bounding_box
-        # Adds a small number to make sure .5 can be rounded to 1.
-        x_min = np.round(center_x - width / 2. + 1e-4)
-        x_max = np.round(center_x + width / 2. + 1e-4)
-        y_min = np.round(center_y - height / 2. + 1e-4)
-        y_max = np.round(center_y + height / 2. + 1e-4)
-
-        x_min = round(np.clip(x_min / 31., 0., 1.) * target_width)
-        y_min = round(np.clip(y_min / 31., 0., 1.) * target_height)
-        x_max = round(np.clip(x_max / 31., 0., 1.) * target_width)
-        y_max = round(np.clip(y_max / 31., 0., 1.) * target_height)
-
-        # Create a figure and axis for Matplotlib
-        print(class_name, (x_min, y_min), x_max - x_min, y_max - y_min)
-
-        draw.rectangle((x_min, y_min, x_max, y_max), outline=color, width=thickness)
-        draw.text((x_min, y_min), class_name, fill=text_color, font=font)
-
-    # Show the image
-    plt.savefig(f"/home/work/increased_en_data/BLT/result/low_loss/{im_type}.png")
+    image.save(os.path.join(folder_path, f"{im_type}.png"))
 
