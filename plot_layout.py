@@ -265,9 +265,8 @@ def create_folder(conditional, exp, base_path):
         folder_path = os.path.join(base_path, exp.split('_')[0], conditional)
     elif conditional == "a+s":
         folder_path = os.path.join(base_path, exp.split('_')[0], conditional.replace('+', '_'))
-    else:
-        print("유효하지 않은 input1 값입니다.")
-        return None
+    else :
+        folder_path = os.path.join(base_path, exp.split('_')[0], conditional)
     
     # 폴더 생성
     os.makedirs(folder_path, exist_ok=True)

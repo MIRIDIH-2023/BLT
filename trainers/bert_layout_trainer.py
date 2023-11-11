@@ -38,6 +38,7 @@ from utils import layout_bert_fast_decode
 from utils import task_manager
 import numpy as np
 import os
+from dataset import datasets_info
 
 
 @flax.struct.dataclass
@@ -543,6 +544,46 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
       n_device, n_batch, *remaining_dims = x.shape
       return np.array(x).reshape((n_device * n_batch,) + tuple(remaining_dims))
 
+    def find_indices_of_no_mask_id(test_batch, values, is_asset):
+      true_indices = [index for index, value in enumerate((test_batch[0]-offset).tolist()) if value in values and is_asset[0][index]]
+      return true_indices
+
+    def add_no_mask_to_size_and_pos(true_indices):
+      indices = []
+      for idx in true_indices :
+        indices += [idx, idx+1, idx+2, idx+3, idx+4]
+
+      return indices
+    
+    def masking_fn(no_mask_indices, position_ids) :
+      is_no_mask = functools.reduce(lambda x, y: x | y, [
+          position_ids == idx
+          for idx in no_mask_indices
+      ])
+
+      return is_no_mask
+
+    def custom_decode(img_true_indices, txt_true_indices, masked_batch, test_batch, is_asset, position_ids) :
+      if len(img_true_indices) != 0 and len(txt_true_indices) != 0:
+        mask_what = input("what do you want not to mask? (im or txt)")
+        if mask_what == "im" :
+          no_mask_indices = add_no_mask_to_size_and_pos(img_true_indices)
+          is_image = masking_fn(no_mask_indices, position_ids)
+          res_batch = jnp.where(is_asset | is_image, test_batch, masked_batch)
+        else :
+          no_mask_indices = add_no_mask_to_size_and_pos(txt_true_indices)
+          is_text = masking_fn(no_mask_indices, position_ids)
+          res_batch = jnp.where(is_asset | is_text, test_batch, masked_batch)
+      elif len(txt_true_indices) != 0 : # text만 있는 경우는 첫 번째만 마스킹 하지 않음 
+        is_text = masking_fn([0, 1, 2, 3, 4], position_ids)
+        res_batch = jnp.where(is_asset | is_text, test_batch, masked_batch)
+      elif len(img_true_indices) != 0 :
+        is_image = masking_fn([0, 1, 2, 3, 4], position_ids)
+        res_batch = jnp.where(is_asset | is_image, test_batch, masked_batch)
+      else : return jnp.where(is_asset, test_batch, masked_batch)
+
+      return res_batch
+    
     if conditional == "none":
       total_time = 0.
       for idx in range(sample_step_num):
@@ -618,7 +659,24 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
           position_ids % self.total_dim == i
           for i in range(1, self.layout_dim + 1)
       ])
-      if conditional == "a+s":
+
+      # 조건에 따라서 inference를 달리 해봅시다!
+      dataset_name = datasets_info.DatasetName(self.config.dataset)
+      label_to_id = datasets_info.get_label_to_id_map(dataset_name)
+      except_text_label = [value for key, value in label_to_id.items() if not key.startswith("text_")]
+      text_label = [value for key, value in label_to_id.items() if key.startswith("text_")]
+
+      img_true_indices = find_indices_of_no_mask_id(test_batch, except_text_label, is_asset)
+      txt_true_indices = find_indices_of_no_mask_id(test_batch, text_label, is_asset)
+
+      if conditional == "custom":
+        masked_batch = custom_decode( masked_batch=masked_batch,
+                                      test_batch=test_batch,
+                                      position_ids=position_ids,
+                                      is_asset=is_asset,
+                                      img_true_indices=img_true_indices,
+                                      txt_true_indices=txt_true_indices)
+      elif conditional == "a+s":
         masked_batch = jnp.where(is_asset | is_size, test_batch, masked_batch)
       elif conditional == "a":
         masked_batch = jnp.where(is_asset, test_batch, masked_batch)
