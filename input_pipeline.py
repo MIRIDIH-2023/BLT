@@ -39,7 +39,7 @@ def _clamp(value):
   return np.clip(value, 0.0, 1.0)
 
 
-def _normalize_entries(documents, shuffle=False):
+def _normalize_entries(documents, shuffle=False, sort_by="top_left_to_bottom_right"):
   """Normalizes the bounding box annotations to the [0, 1] range.
 
   Args:
@@ -65,6 +65,7 @@ def _normalize_entries(documents, shuffle=False):
 
   # TODO : 각 json 파일 형태 유추, 잘 되는지 확인 
   # [ {"children" : [ {"cneter" : [int, int], "width" : int, "height": int }, {}, {} ], "doc_width", "doc_height"}, {}, {} ]
+  # for debugging
   print("======= Normalize! ======= shuffle: ", shuffle)
 
   for document in tqdm(documents):
@@ -79,6 +80,9 @@ def _normalize_entries(documents, shuffle=False):
     if shuffle:
       random.Random(0).shuffle(normalized_children)
       # normalized_children = normalized_children
+    elif sort_by == "distance_from_center" :
+      normalized_children = sorted(
+          normalized_children, key=lambda e: (abs(e["center"][1]-document_height/2), abs(e["center"][0]-document_width/2)))
     else:
       normalized_children = sorted(
           normalized_children, key=lambda e: (e["center"][1], e["center"][0]))
@@ -98,7 +102,9 @@ def get_dataset(batch_size,
                 dataset_name="RICO",
                 shuffle=False,
                 idx=None,
-                is_background_test=False):
+                is_background_test=False,
+                composition="default",
+                sort_by="top_left_to_bottom_right"):
   """Obtain dataset from preprocessed json data.
 
   Args:
@@ -118,7 +124,9 @@ def get_dataset(batch_size,
   assert batch_size % n_devices == 0
   ds_path = os.path.join(dataset_folder, ds_file)
   # shuffle = True if "train" not in ds_file else shuffle
-  dataset = LayoutDataset(dataset_name, ds_path, add_bos, shuffle, idx=idx, is_background_test=is_background_test)
+  dataset = LayoutDataset(dataset_name, ds_path, add_bos, shuffle, 
+                          idx=idx, is_background_test=is_background_test, 
+                          composition=composition, sort_by=sort_by)
 
   class_range = [dataset.offset_class, dataset.number_classes]
   center_x_range = [dataset.offset_center_x, dataset.resolution_w]
@@ -142,7 +150,9 @@ def get_all_dataset(batch_size,
                     add_bos,
                     max_length,
                     dataset_name="RICO",
-                    shuffle=False):
+                    shuffle=False,
+                    composition="default",
+                    sort_by="top_left_to_bottom_right"):
   """Creates datasets for various splits, such as train, valid and test.
 
   Args:
@@ -163,12 +173,13 @@ def get_all_dataset(batch_size,
                                                max_length,
                                                add_bos,
                                                dataset_name,
-                                               shuffle)
+                                               shuffle,
+                                               composition=composition, sort_by=sort_by)
   eval_ds, _, _ = get_dataset(batch_size, dataset_folder, n_devices, "val/json_data",
-                              max_length, add_bos, dataset_name, shuffle=False)
+                              max_length, add_bos, dataset_name, shuffle=False, composition=composition, sort_by=sort_by)
   test_ds, _, _ = get_dataset(batch_size, dataset_folder, n_devices,
                               "test/json_data", max_length, add_bos, dataset_name,
-                              shuffle=False)
+                              shuffle=False, composition=composition, sort_by=sort_by)
   return train_ds, eval_ds, test_ds, vocab_size, pos_info
 
 
@@ -184,7 +195,9 @@ class LayoutDataset:
                resolution_h = DEFAULT_RESOLUTION_HEIGHT,
                limit = 22,
                idx=None,
-               is_background_test=False):
+               is_background_test=False,
+               composition="default",
+               sort_by="top_left_to_bottom_right"):
     """Sets up the dataset instance, and computes the vocabulary.
 
     Args:
@@ -218,10 +231,11 @@ class LayoutDataset:
                                       label_names=label_names,
                                       label_to_id=label_to_id,
                                       idx=idx,
-                                      with_background_test=is_background_test)
+                                      with_background_test=is_background_test,
+                                      composition=composition)
 
     self.add_bos = add_bos
-    self.data = _normalize_entries(data, shuffle)
+    self.data = _normalize_entries(data, shuffle, sort_by) # TODO
     self.number_classes = datasets_info.get_number_classes(self.dataset_name)
     self.id_to_label = datasets_info.get_id_to_label_map(self.dataset_name)
     self.pad_idx, self.bos_idx, self.eos_idx = 0, 1, 2

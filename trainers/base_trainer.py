@@ -258,7 +258,9 @@ class LayoutBaseTrainer(abc.ABC):
         n_devices,
         add_bos=self.config.autoregressive,
         max_length=self.config.max_length,
-        dataset_name=dataset)
+        dataset_name=dataset, 
+        composition=self.config.composition,
+        sort_by=self.config.sort_by)
     train_ds = train_ds.repeat()
     self.config.vocab_size = vocab_size
     train_iter = iter(train_ds)  # pytype: disable=wrong-arg-types

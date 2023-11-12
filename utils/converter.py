@@ -132,7 +132,7 @@ def get_image_label(image_info, text_infos):
 # label에 할당된 id값이 저장된 dictionary
 # idx(int): test시 사용되는 변수, 데이터 리스트에서 어떤 데이터를 뽑아 시각화할지 명시하는 값
 # with_background_test: inference 결과를 시각화할 때 thumbnail이미지를 넣을 것인지 명시
-def load_categorized(path, label_names, label_to_id, idx, with_background_test=False) :
+def load_categorized(path, label_names, label_to_id, idx, with_background_test=False, composition="defualt") :
     data = []
     image_link=None
 
@@ -189,9 +189,9 @@ def load_categorized(path, label_names, label_to_id, idx, with_background_test=F
                     
             template["children"].append({
                 "category_id" : label_to_id[label],
-                "center" : [pair[2], pair[3]],
-                "width" : pair[4],
-                "height" : pair[5]
+                "center" : [(pair[2]-pair[4]/2.), (pair[3]-pair[5]/2.)] if composition == "ltwh" or composition == "ltrb" else [pair[2], pair[3]],
+                "width" : (pair[2]+pair[4]/2.) if composition == "ltrb" else pair[4],
+                "height" : (pair[3]+pair[5]/2.) if composition == "ltrb" else pair[5]
             })
 
         # text이외의 tag들을 category화하는 알고리즘
@@ -245,9 +245,9 @@ def load_categorized(path, label_names, label_to_id, idx, with_background_test=F
 
             template["children"].append({
                 "category_id" : label_to_id[label],
-                "center" : [center_x, center_y],
-                "width" : width_,
-                "height" : height_
+                "center" : [(center_x-width_/2.), (center_y-height_/2.)] if composition == "ltwh" or composition == "ltrb" else [center_x, center_y],
+                "width" : (center_x+width_/2.) if composition == "ltrb" else width_,
+                "height" : (center_y+height_/2.) if composition == "ltrb" else height_
             })
 
         if with_background_test : image_link = json_data["thumbnail_url"]

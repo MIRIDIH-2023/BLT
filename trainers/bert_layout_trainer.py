@@ -516,7 +516,9 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
         add_bos=False,
         dataset_name=dataset,
         idx=idx,
-        is_background_test=True)
+        is_background_test=True,
+        composition=self.config.composition,
+        sort_by=self.config.sort_by)
     
     logits_mask, offset = self.make_mask(vocab_size, pos_info,
                                          max_decode_len,

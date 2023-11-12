@@ -29,6 +29,8 @@ def get_config():
   config.experiment = "bert_layout"
   config.model_class = "bert_layout"
   config.image_size = 256
+  config.composition = "ltwh" # default, ltwh, ltrb
+  config.sort_by = "top_left_to_bottom_right" # top_left_to_bottom_right, distance_from_center
 
   # Training info
   config.seed = 0
@@ -40,7 +42,7 @@ def get_config():
   config.train_shuffle = True
   config.eval_pad_last_batch = False
   config.eval_batch_size = 64
-  config.num_train_steps = 50_000
+  config.num_train_steps = 15_000
   config.checkpoint_every_steps = 5000
   config.eval_every_steps = 1000
   config.num_eval_steps = 100

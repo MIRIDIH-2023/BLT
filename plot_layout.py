@@ -282,7 +282,8 @@ def plot_sample_with_PIL(data,
                 im_type="no_input",
                 idx=None,
                 image_link=None,
-                conditional="a"):
+                conditional="a",
+                composition="default"):
     """Draws an image from a sequence of bounding boxes.
 
     Args:
@@ -326,10 +327,26 @@ def plot_sample_with_PIL(data,
 
         width, height, center_x, center_y = bounding_box
         # Adds a small number to make sure .5 can be rounded to 1.
-        x_min = np.round(center_x - width / 2. + 1e-4)
-        x_max = np.round(center_x + width / 2. + 1e-4)
-        y_min = np.round(center_y - height / 2. + 1e-4)
-        y_max = np.round(center_y + height / 2. + 1e-4)
+        if composition == "ltwh" :
+          print("ltwh visualization")
+          x_min = np.round(center_x + 1e-4)
+          x_max = np.round(center_x + width + 1e-4)
+          y_min = np.round(center_y + 1e-4)
+          y_max = np.round(center_y + height + 1e-4)
+
+        elif composition == "ltrb" :
+          print("ltrb visualization")
+          x_min = np.round(center_x + 1e-4)
+          x_max = np.round(width + 1e-4)
+          y_min = np.round(center_y + 1e-4)
+          y_max = np.round(height + 1e-4)
+
+        else :
+          print("default visualization")
+          x_min = np.round(center_x - width / 2. + 1e-4)
+          x_max = np.round(center_x + width / 2. + 1e-4)
+          y_min = np.round(center_y - height / 2. + 1e-4)
+          y_max = np.round(center_y + height / 2. + 1e-4)
 
         x_min = round(np.clip(x_min / 31., 0., 1.) * target_width)
         y_min = round(np.clip(y_min / 31., 0., 1.) * target_height)

@@ -79,49 +79,26 @@ def main(argv):
   if FLAGS.mode == "train":
     trainer.train()
   elif FLAGS.mode == "test":
-    # generated_samples, real_samples = trainer.test(conditional="none", iterative_nums=[10, 10, 10])
-    # print()
-    # print("====== result ======")
-    # print("generated samples: \n", generated_samples)
-    # print("real samples: \n", real_samples)
-    # data = plot_layout.parse_layout_sample(data=generated_samples, dataset_type="CATEGORIZED")
-    # for i in range(10) :
-    #   plot_layout.plot_sample_with_PIL(
-    #     data=onp.array(generated_samples[i][-1]),
-    #     target_width=500,
-    #     target_height=500,
-    #     dataset_type="CATEGORIZED",
-    #     border_size= 1,
-    #     thickness= 4,
-    #     im_type=f"infer{i}_{FLAGS.workdir}")
-    #   print()
-    #   plot_layout.plot_sample_with_PIL(
-    #     data=onp.array(real_samples[i]),
-    #     target_width=500,
-    #     target_height=500,
-    #     dataset_type="CATEGORIZED",
-    #     border_size= 1,
-    #     thickness= 4,
-    #     im_type=f"real{i}_{FLAGS.workdir}")
     while(1) :
       idx = None
       idx = int(input("enter the index number (or -1 to quit): "))
       if idx == -1 : break
 
-      inter = int(input("enter iter: "))
+      iteration = int(input("enter iter: "))
       condition = input("enter decode condition (a or a+s): ")
 
-      generated_samples, real_samples, image_link = trainer.test_with_backgroundImage(conditional=condition, iterative_nums=[inter, inter, inter], idx=idx)
+      generated_samples, real_samples, image_link = trainer.test_with_backgroundImage(conditional=condition, iterative_nums=[iteration, iteration, iteration], idx=idx)
       plot_layout.plot_sample_with_PIL(
         data=onp.array(generated_samples[0][-1]),
         workdir=FLAGS.workdir,
         dataset_type="CATEGORIZED",
         border_size= 1,
         thickness= 6,
-        im_type=f"{idx}_iter{inter}_infer",
+        im_type=f"{idx}_iter{iteration}_infer",
         idx=idx, 
         image_link=image_link,
-        conditional=condition)
+        conditional=condition,
+        composition=FLAGS.config.composition)
       print()
       plot_layout.plot_sample_with_PIL(
         data=onp.array(real_samples[0]),
@@ -129,10 +106,11 @@ def main(argv):
         dataset_type="CATEGORIZED",
         border_size= 1,
         thickness= 6,
-        im_type=f"{idx}_iter{inter}_real",
+        im_type=f"{idx}_iter{iteration}_real",
         idx=idx,
         image_link=image_link,
-        conditional=condition)
+        conditional=condition,
+        composition=FLAGS.config.composition)
   else:
     raise NotImplementedError
 
