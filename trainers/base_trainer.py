@@ -379,15 +379,17 @@ class LayoutBaseTrainer(abc.ABC):
   def evaluate_metrics(self,
                        generated_samples,
                        real_samples,
-                       eos_id=-2,
-                       conditional="a+s"):
+                       eos_id=0,
+                       conditional="a+s",
+                       composition="default"):
     """Computing metrics."""
     def convert_format(layouts, eos_id):
       new_layouts = []
       for sample in layouts:
         sample = np.array(sample)
-        if np.nonzero(sample == eos_id)[0].shape[0] > 0:
-          real_len = np.nonzero(sample == eos_id)[0][0]
+        sample = sample[-1]
+        if np.nonzero(sample < eos_id)[0].shape[0] > 0:
+          real_len = np.nonzero(sample < eos_id)[0][0]
           sample = sample[:real_len]
           new_layouts.append(sample.reshape(-1, 5))
       return new_layouts
@@ -396,8 +398,9 @@ class LayoutBaseTrainer(abc.ABC):
     iou = []
     overlap = []
     alignment = []
+    # print(generated_samples)
     for sample in generated_samples:
-      iou.append(metrics.get_layout_iou(sample))
+      iou.append(metrics.get_layout_iou(sample, composition))
       overlap.append(metrics.get_overlap_index(sample))
       align_loss = metrics.get_alignment_loss(sample)
       if align_loss > 0:
@@ -410,14 +413,14 @@ class LayoutBaseTrainer(abc.ABC):
         "alignment": avg(alignment)
     }
 
-    if conditional != "unconditional":
-      real_samples = convert_format(real_samples, eos_id)
-      similarity = metrics.conditional_distance(generated_samples, real_samples,
-                                                conditional)
-      rst["similarity"] = similarity
-    else:
-      diveristy = metrics.diveristy(generated_samples)
-      rst["diversity"] = diveristy
+    # if conditional != "unconditional":
+    #   real_samples = convert_format(real_samples, eos_id)
+    #   similarity = metrics.conditional_distance(generated_samples, real_samples,
+    #                                             conditional)
+    #   rst["similarity"] = similarity
+    # else:
+    #   diveristy = metrics.diveristy(generated_samples)
+    #   rst["diversity"] = diveristy
 
     return rst
 

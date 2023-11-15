@@ -45,6 +45,9 @@ COLORS = {
     "GRID": (103, 58, 184)
 }
 
+# "image_partially_with_text": (24, 148, 22),
+#     "image_without_text": (63, 134, 221),
+
 LABEL_NAMES = (
     "text_0_1",
     "text_0_2",

@@ -33,6 +33,8 @@ from trainers import transformer_trainer
 # import cv2
 import plot_layout
 import numpy as onp
+import json
+import os
 
 FLAGS = flags.FLAGS
 
@@ -53,6 +55,17 @@ def get_trainer_cls(config, workdir):
     return bert_layout_trainer.BERTLayoutTrainer(config, workdir)
   else:
     raise NotImplementedError(f"{config.model_class} is not Implemented")
+  
+def create_file_name(conditional, exp):
+    exp = exp.split('/')[1]
+    if conditional == "a":
+        file_name = "report_{0}_{1}.json".format(exp, conditional)
+    elif conditional == "a+s":
+        file_name = "report_{0}_{1}.json".format(exp, conditional.replace('+', '_'))
+    else :
+        file_name = "report_{0}_{1}.json".format(exp, conditional)
+
+    return file_name
 
 
 def main(argv):
@@ -111,6 +124,28 @@ def main(argv):
         image_link=image_link,
         conditional=condition,
         composition=FLAGS.config.composition)
+  elif FLAGS.mode == "eval":
+    total_iteration = int(input("enter total iteration: "))
+    condition = input("enter decode condition (a or a+s): ")
+    report = []
+    for iteration in range(1, total_iteration+1) :
+      generated_samples, real_samples = trainer.test(conditional=condition, iterative_nums=[iteration, iteration, iteration])
+      result = trainer.evaluate_metrics(generated_samples=generated_samples,
+                                        real_samples=real_samples,
+                                        conditional=condition,
+                                        composition=FLAGS.config.composition)
+
+      report.append(result)
+
+    report_path = "/home/work/increased_en_data/BLT/report"
+    file_name = create_file_name(condition, FLAGS.workdir)
+
+    # assert file_name != None
+    data = { "report" : report }
+
+    file_path = os.path.join(report_path, file_name)
+    with open(file_path, 'w', encoding='utf-8') as file:
+      json.dump(data, file, indent="\t")
   else:
     raise NotImplementedError
 

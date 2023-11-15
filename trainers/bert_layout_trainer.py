@@ -329,7 +329,7 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
            conditional="none",
            max_decode_len=128,
            use_vertical=False,
-           sample_step_num=10,
+           sample_step_num=100,
            prior=None,
            max_asset_num=22,
            vertical_idx=0):
@@ -348,7 +348,9 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
         "test/json_data",
         max_decode_len,
         add_bos=False,
-        dataset_name=dataset)
+        dataset_name=dataset,
+        composition=self.config.composition,
+        sort_by=self.config.sort_by)
     logits_mask, offset = self.make_mask(vocab_size, pos_info,
                                          max_decode_len,
                                          self.layout_dim)
@@ -357,7 +359,9 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
     init_label = jnp.ones((batch_size, 1))
     init_batch = dict(inputs=init_batch, labels=init_label)
     model_dict, state = self.create_train_state(model_rng, init_batch)
-    ckpt_path = self.config.test_checkpoint_dir
+    test_checkpoint_dir = os.path.join(self.workdir, "checkpoints")
+
+    ckpt_path = test_checkpoint_dir
     state = task_manager.restore_checkpoint(state, ckpt_path)
     state = flax_utils.replicate(state)
 

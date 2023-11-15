@@ -48,7 +48,7 @@ def normalize_bbox(layout,
   return layout[:, 1:]
 
 
-def get_layout_iou(layout):
+def get_layout_iou(layout, composition):
   """Computes the IOU on the layout level.
 
   Args:
@@ -63,13 +63,25 @@ def get_layout_iou(layout):
   layout_channels = []
   for bbox in layout:
     canvas = np.zeros((32, 32, 1), dtype=np.float32)
+    if bbox[0] not in range(16) : continue
     width, height = bbox[1], bbox[2]
     center_x, center_y = bbox[3], bbox[4]
     # Avoid round behevior at 0.5.
-    min_x = round(center_x - width / 2. + 1e-4)
-    max_x = round(center_x + width / 2. + 1e-4)
-    min_y = round(center_y - height / 2. + 1e-4)
-    max_y = round(center_y + height / 2. + 1e-4)
+    if composition == "ltwh" :
+      min_x = round(center_x + 1e-4)
+      max_x = round(center_x + width + 1e-4)
+      min_y = round(center_y + 1e-4)
+      max_y = round(center_y + height + 1e-4)
+    elif composition == "ltrb" :
+      min_x = round(center_x + 1e-4)
+      max_x = round(width + 1e-4)
+      min_y = round(center_y + 1e-4)
+      max_y = round(height + 1e-4)
+    else :
+      min_x = round(center_x - width / 2. + 1e-4)
+      max_x = round(center_x + width / 2. + 1e-4)
+      min_y = round(center_y - height / 2. + 1e-4)
+      max_y = round(center_y + height / 2. + 1e-4)
     canvas[min_x:max_x, min_y:max_y] = 1.
     layout_channels.append(canvas)
   if not layout_channels:

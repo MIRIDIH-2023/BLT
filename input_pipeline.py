@@ -67,6 +67,7 @@ def _normalize_entries(documents, shuffle=False, sort_by="top_left_to_bottom_rig
   # [ {"children" : [ {"cneter" : [int, int], "width" : int, "height": int }, {}, {} ], "doc_width", "doc_height"}, {}, {} ]
   # for debugging
   print("======= Normalize! ======= shuffle: ", shuffle)
+  print("======= {} =======".format(sort_by))
 
   for document in tqdm(documents):
     children = document["children"]
