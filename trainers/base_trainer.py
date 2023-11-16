@@ -42,7 +42,7 @@ class LayoutBaseTrainer(abc.ABC):
 
   def __init__(self, config, workdir):
     self.config = config
-    self.workdir = workdir # TODO 실험 다 하고 os.path.join("exp", workdir) 추가하기 
+    self.workdir = os.path.join("exp", workdir) # 실험 model state만 저장되는 경로 지정  
     self.rng = jax.random.PRNGKey(config.seed)
     self.dtype, self.data_dtype = self.get_dtype()
     self.layout_dim = self.config.layout_dim

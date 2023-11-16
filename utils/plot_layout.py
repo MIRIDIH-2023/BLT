@@ -116,7 +116,7 @@ def create_folder(conditional, exp, base_path):
     # 폴더 경로 생성
     # /base_path/실험 번호(exp6)/a/
     # /base_path/실험 번호(exp6)/a_s/
-    exp = exp.split('/')[1]
+    # exp = exp.split('/')[1]
     if conditional == "a":
         folder_path = os.path.join(base_path, exp.split('_')[0], conditional)
     elif conditional == "a+s":
