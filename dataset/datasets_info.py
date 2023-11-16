@@ -24,6 +24,10 @@ from . import rico_info
 from . import miri_info
 from . import categorized_info
 
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from utils import converter
 
 @enum.unique
 class DatasetName(enum.Enum):
@@ -33,6 +37,30 @@ class DatasetName(enum.Enum):
   MAGAZINE = "MAGAZINE"
   MIRI = "MIRI"
   CATEGORIZED = "CATEGORIZED"
+
+
+def load_data(path, label_names, label_to_id, dataset_name, idx, with_background_test=False, composition="defualt") :
+  data = []
+  image_link = None
+  if dataset_name == DatasetName.MIRI:
+    data, image_link = converter.miri_load(path=path, 
+                                label_names=label_names, 
+                                label_to_id=label_to_id, 
+                                idx=idx, 
+                                with_background_test=with_background_test,
+                                composition=composition)
+  elif dataset_name == DatasetName.CATEGORIZED:
+    print("load categorized")
+    data, image_link = converter.load_categorized(path=path, 
+                                        label_names=label_names, 
+                                        label_to_id=label_to_id, 
+                                        idx=idx, 
+                                        with_background_test=with_background_test,
+                                        composition=composition)
+  else:
+    raise ValueError(f"Unknown dataset '{dataset_name}'")
+
+  return data, image_link
 
 
 def get_number_classes(dataset_name):
