@@ -33,13 +33,41 @@ from tqdm import tqdm
 DEFAULT_RESOLUTION_WIDTH = 32
 DEFAULT_RESOLUTION_HEIGHT = 32
 
+'''
+shuffle을 하지 않을 경우, input  sequence 정렬하는 방법
+top_left_to_bottom_right: template의 좌측 상단부터 우측 하단에 위치하는 요소 순으로 정렬, composition에 따라 기준이 달라짐
+composition: default - 중심의 x, y좌표 기준
+             ltwh, ltrb - 왼쪽 상단의 x, y좌표 기준
+
+distance_from_center: template 중심 좌표에서 가까운 요소 순으로 정렬
+composition: default, ltwh, ltrb - 요소 bbox 중심과 template 중심 각각의 x, y 차 기준    
+'''
+def sort_by_what(normalized_children, document_width, document_height, sort_by="top_left_to_bottom_right", composition="default") :
+  if sort_by == "top_left_to_bottom_right" :
+    normalized_children = sorted(
+          normalized_children, key=lambda e: (e["center"][1], e["center"][0]))
+  elif sort_by == "distance_from_center" :
+    if composition == "ltwh" :
+      normalized_children = sorted(
+          normalized_children, key=lambda e: (abs(e["center"][1] + (e["height"]/2.) - (document_height/2.)), abs(e["center"][0] + (e["width"]/2.) - (document_width/2.))))
+    elif composition == "ltrb" :
+      normalized_children = sorted(
+          normalized_children, key=lambda e: (abs((e["center"][1]+e["height"])/2. - (document_height/2.)), abs((e["center"][0]+e["width"])/2 - (document_width/2.))))
+    else :
+      normalized_children = sorted(
+          normalized_children, key=lambda e: (abs(e["center"][1] - (document_height/2.)), abs(e["center"][0] - (document_width/2.))))
+  else :
+    raise ValueError(f"Unknown sort by '{sort_by}'")
+
+  return normalized_children
+
 
 def _clamp(value):
   """Truncates `value` to the [0, 1] range."""
   return np.clip(value, 0.0, 1.0)
 
 
-def _normalize_entries(documents, shuffle=False, sort_by="top_left_to_bottom_right"):
+def _normalize_entries(documents, shuffle=False, sort_by="top_left_to_bottom_right", composition="default"):
   """Normalizes the bounding box annotations to the [0, 1] range.
 
   Args:
@@ -63,11 +91,11 @@ def _normalize_entries(documents, shuffle=False, sort_by="top_left_to_bottom_rig
         "height": _clamp(element["height"] / document_height)
     }
 
-  # TODO : 각 json 파일 형태 유추, 잘 되는지 확인 
-  # [ {"children" : [ {"cneter" : [int, int], "width" : int, "height": int }, {}, {} ], "doc_width", "doc_height"}, {}, {} ]
   # for debugging
-  print("======= Normalize! ======= shuffle: ", shuffle)
+  # TODO 나중에 최종 정리하면서 지우기 
+  # print("======= Normalize! ======= shuffle: ", shuffle)
   print("======= {} =======".format(sort_by))
+  print("======= shuffle: {} ========".format(shuffle))
 
   for document in tqdm(documents):
     children = document["children"]
@@ -78,15 +106,16 @@ def _normalize_entries(documents, shuffle=False, sort_by="top_left_to_bottom_rig
         document_width=document_width,
         document_height=document_height)
     normalized_children = [normalize_fn(c) for c in children]
+    # TODO sort_by config로 조작 가능하게 만들기 
     if shuffle:
       random.Random(0).shuffle(normalized_children)
       # normalized_children = normalized_children
-    elif sort_by == "distance_from_center" :
-      normalized_children = sorted(
-          normalized_children, key=lambda e: (abs(e["center"][1]-document_height/2), abs(e["center"][0]-document_width/2)))
-    else:
-      normalized_children = sorted(
-          normalized_children, key=lambda e: (e["center"][1], e["center"][0]))
+    else :
+      normalized_children = sort_by_what(normalized_children=normalized_children, 
+                                         document_width=document_width, 
+                                         document_height=document_height, 
+                                         sort_by=sort_by, 
+                                         composition=composition)
 
     normalized_document = {**document, "children": normalized_children}
     normalized_documents.append(normalized_document)
@@ -125,6 +154,8 @@ def get_dataset(batch_size,
   assert batch_size % n_devices == 0
   ds_path = os.path.join(dataset_folder, ds_file)
   # shuffle = True if "train" not in ds_file else shuffle
+  # TODO config.train_shuffle 사용해서 shuffle 조작가능하게 만들기 
+  # shuffle = True
   dataset = LayoutDataset(dataset_name, ds_path, add_bos, shuffle, 
                           idx=idx, is_background_test=is_background_test, 
                           composition=composition, sort_by=sort_by)
@@ -141,6 +172,7 @@ def get_dataset(batch_size,
       batch_size, max_length, group_data_by_size=False)
   vocab_size = dataset.get_vocab_size()
 
+  # image link 유무에 따라 반환 값을 다르게 함
   if dataset.image_link is not None : return ds, vocab_size, pos_info, dataset.image_link
   else : return ds, vocab_size, pos_info
 
@@ -167,20 +199,20 @@ def get_all_dataset(batch_size,
   Returns:
     datasets for various splits, the size of vocabulary and asset information.
   """
-  # COMPLETE : train, eval, test pickle file list 만들기 Split 을 써야 할 듯... 
+
   # train: 82296개, val: 10287개, test: 10287개 
   train_ds, vocab_size, pos_info = get_dataset(batch_size, dataset_folder,
                                                n_devices, "train/json_data",
                                                max_length,
                                                add_bos,
                                                dataset_name,
-                                               shuffle,
+                                               shuffle=shuffle,
                                                composition=composition, sort_by=sort_by)
   eval_ds, _, _ = get_dataset(batch_size, dataset_folder, n_devices, "val/json_data",
-                              max_length, add_bos, dataset_name, shuffle=False, composition=composition, sort_by=sort_by)
+                              max_length, add_bos, dataset_name, shuffle=shuffle, composition=composition, sort_by=sort_by)
   test_ds, _, _ = get_dataset(batch_size, dataset_folder, n_devices,
                               "test/json_data", max_length, add_bos, dataset_name,
-                              shuffle=False, composition=composition, sort_by=sort_by)
+                              shuffle=shuffle, composition=composition, sort_by=sort_by)
   return train_ds, eval_ds, test_ds, vocab_size, pos_info
 
 
@@ -213,14 +245,7 @@ class LayoutDataset:
         coordinates.
       limit: Maximum amount of element in a layout.
     """
-    # complete : train, eval, test의 json_data folder path가 넘어옴 
-    # complete : 아래 데이터 형식으로 data 만들기 
-    # 일단 train하는 데이터 리스트를 받음 (.pickle file list)
-    # pickle file을 각각 열어서 아래 형식으로 변형해서 data 변수에 할당
-    # data = [ {"children" : [ {"category_id": int, "cneter" : [int, int], "width" : int, "height": int }, {}, {} ], "doc_width", "doc_height"}, {}, {} ]
-
-    # with open(path, "r") as f:
-    #   data = json.load(f)
+    
     self.dataset_name = datasets_info.DatasetName(dataset_name)
 
     print("Loading Dataset from {}".format(path))
@@ -228,15 +253,20 @@ class LayoutDataset:
     label_names = datasets_info.get_label_name(self.dataset_name)
     label_to_id = datasets_info.get_label_to_id_map(self.dataset_name)
 
-    data, image_link = converter.load_categorized(path=path, 
-                                      label_names=label_names,
-                                      label_to_id=label_to_id,
-                                      idx=idx,
-                                      with_background_test=is_background_test,
-                                      composition=composition)
+    # pickle file을 각각 열어서 아래 형식으로 변형해서 data 변수에 할당
+    # data = [ {"children" : [ {"category_id": int, "center" : [int, int], "width" : int, "height": int }, {}, {} ], "doc_width", "doc_height"}, {}, {} ]
+    data, image_link = datasets_info.load_data(path=path, 
+                                              label_names=label_names,
+                                              label_to_id=label_to_id,
+                                              dataset_name=self.dataset_name,
+                                              idx=idx,
+                                              with_background_test=is_background_test,
+                                              composition=composition)
+
+    assert len(data) != 0
 
     self.add_bos = add_bos
-    self.data = _normalize_entries(data, shuffle, sort_by) # TODO
+    self.data = _normalize_entries(data, shuffle, sort_by, composition)
     self.number_classes = datasets_info.get_number_classes(self.dataset_name)
     self.id_to_label = datasets_info.get_id_to_label_map(self.dataset_name)
     self.pad_idx, self.bos_idx, self.eos_idx = 0, 1, 2

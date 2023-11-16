@@ -42,7 +42,7 @@ class LayoutBaseTrainer(abc.ABC):
 
   def __init__(self, config, workdir):
     self.config = config
-    self.workdir = workdir
+    self.workdir = workdir # TODO 실험 다 하고 os.path.join("exp", workdir) 추가하기 
     self.rng = jax.random.PRNGKey(config.seed)
     self.dtype, self.data_dtype = self.get_dtype()
     self.layout_dim = self.config.layout_dim
@@ -258,6 +258,7 @@ class LayoutBaseTrainer(abc.ABC):
         n_devices,
         add_bos=self.config.autoregressive,
         max_length=self.config.max_length,
+        shuffle=self.config.train_shuffle,
         dataset_name=dataset, 
         composition=self.config.composition,
         sort_by=self.config.sort_by)
@@ -368,6 +369,7 @@ class LayoutBaseTrainer(abc.ABC):
           if eval_metrics is not None:
             writer.write_scalars(step, eval_metrics.compute())
 
+        # TODO 시간되면 최소 loss일 때만 checkpoint 저장하는 걸로 바꿔보자잉 
         if step % self.config.checkpoint_every_steps == 0 or is_last_step:
           with report_progress.timed("checkpoint"):
             state = self.merge_model_state(state)

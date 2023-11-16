@@ -348,6 +348,7 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
         "test/json_data",
         max_decode_len,
         add_bos=False,
+        shuffle=self.config.train_shuffle,
         dataset_name=dataset,
         composition=self.config.composition,
         sort_by=self.config.sort_by)
@@ -518,6 +519,7 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
         "test/json_data",
         max_decode_len,
         add_bos=False,
+        shuffle=self.config.train_shuffle,
         dataset_name=dataset,
         idx=idx,
         is_background_test=True,
