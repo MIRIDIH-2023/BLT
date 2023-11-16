@@ -95,79 +95,8 @@ def parse_layout_sample(data, dataset_type):
                           [y_min, x_min, y_max, x_max]]
   return result
 
-
-# def plot_sample(data,
-#                 target_width,
-#                 target_height,
-#                 dataset_type,
-#                 border_size = 1,
-#                 thickness = 4):
-#   """Draws an image from a sequence of bounding boxes.
-
-#   Args:
-#     data: A sequence of bounding boxes. They must be in the 'networks output'
-#       format (see dataset_entries_to_network_outputs).
-#     target_width: Result image width.
-#     target_height: Result image height.
-#     dataset_type: Dataset type keyword. Necessary to assign labels.
-#     border_size: Width of the border added to the image.
-#     thickness: It is the thickness of the rectangle border line in px.
-#       Thickness of -1 px will display each box with a colored box without text.
-
-#   Returns:
-#     The image as an np.ndarray of np.uint8 type.
-#   """
-#   image = np.zeros((target_height, target_width, 3), dtype=np.uint8) + 255
-
-#   for idx in range(0, data.shape[-1], 5):
-#     entry = data[idx:idx+5]
-#     _, class_name, color, bounding_box = parse_entry(dataset_type, entry)
-
-#     width, height, center_x, center_y = bounding_box
-#     # Adds a small number to make sure .5 can be rounded to 1.
-#     x_min = np.round(center_x - width / 2. + 1e-4)
-#     x_max = np.round(center_x + width / 2. + 1e-4)
-#     y_min = np.round(center_y - height / 2. + 1e-4)
-#     y_max = np.round(center_y + height / 2. + 1e-4)
-
-#     x_min = round(np.clip(x_min / 31., 0., 1.) * target_width)
-#     y_min = round(np.clip(y_min / 31., 0., 1.) * target_height)
-#     x_max = round(np.clip(x_max / 31., 0., 1.) * target_width)
-#     y_max = round(np.clip(y_max / 31., 0., 1.) * target_height)
-
-#     image = cv2.rectangle(
-#         image,
-#         pt1=(x_min, y_min),
-#         pt2=(x_max, y_max),
-#         color=color,
-#         thickness=thickness)
-#     textsize = cv2.getTextSize(
-#         class_name, cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, thickness=2)[0]
-
-#     # get coords based on boundary
-#     textx = (x_max + x_min - textsize[0]) / 2
-#     texty = (y_min + y_max + textsize[1]) / 2
-#     # if thickness != -1:
-#     image = cv2.putText(
-#         image,
-#         text=class_name,
-#         org=(int(textx), int(texty)),
-#         fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-#         fontScale=1.,
-#         color=(0, 0, 0),
-#         thickness=2)
-
-#   image = cv2.copyMakeBorder(
-#       image,
-#       top=border_size,
-#       bottom=border_size,
-#       left=border_size,
-#       right=border_size,
-#       borderType=cv2.BORDER_CONSTANT,
-#       value=[0, 0, 0])
-
-#   return image
-
+# image위에 bbox layout을 그릴 때 색깔을 넣기 위해 만든 함수
+# PIL로 대체하면서 사용하지 않음
 def rgb_to_hex(rgb):
     r, g, b = map(int, rgb)
     if 15 < r and r < 256 : r_hex = hex(r)[2:]
@@ -182,84 +111,11 @@ def rgb_to_hex(rgb):
 
     return "#{0}{1}{2}".format(r_hex, g_hex, b_hex)
 
-def plot_sample_with_plt(data,
-                target_width,
-                target_height,
-                dataset_type,
-                border_size=1,
-                thickness=4,
-                im_type="no_input"):
-    """Draws an image from a sequence of bounding boxes.
-
-    Args:
-        data: A sequence of bounding boxes. They must be in the 'networks output'
-        format (see dataset_entries_to_network_outputs).
-        target_width: Result image width.
-        target_height: Result image height.
-        dataset_type: Dataset type keyword. Necessary to assign labels.
-        border_size: Width of the border added to the image.
-        thickness: It is the thickness of the rectangle border line in px.
-        Thickness of -1 px will display each box with a colored box without text.
-
-    Returns:
-        The image as an np.ndarray of np.uint8 type.
-    """
-    image = np.zeros((target_height, target_width, 3), dtype=np.uint8) + 255
-
-    data = data[data >= 0]
-
-    fig, ax = plt.subplots()
-
-    for idx in range(0, len(data), 5):
-        entry = data[idx:idx + 5]
-        _, class_name, color, bounding_box = parse_entry(dataset_type, entry)
-
-        width, height, center_x, center_y = bounding_box
-        # Adds a small number to make sure .5 can be rounded to 1.
-        x_min = np.round(center_x - width / 2. + 1e-4)
-        x_max = np.round(center_x + width / 2. + 1e-4)
-        y_min = np.round(center_y - height / 2. + 1e-4)
-        y_max = np.round(center_y + height / 2. + 1e-4)
-
-        x_min = round(np.clip(x_min / 31., 0., 1.) * target_width)
-        y_min = round(np.clip(y_min / 31., 0., 1.) * target_height)
-        x_max = round(np.clip(x_max / 31., 0., 1.) * target_width)
-        y_max = round(np.clip(y_max / 31., 0., 1.) * target_height)
-
-        # Create a figure and axis for Matplotlib
-        hex_code = rgb_to_hex(color)
-        print(class_name, (x_min, y_min), x_max - x_min, y_max - y_min)
-        rect = patches.Rectangle(
-            (x_min, y_min),
-            x_max - x_min,
-            y_max - y_min,
-            fill=False,
-            edgecolor=hex_code,
-            linewidth=thickness)
-        ax.add_patch(rect)
-
-        ax.annotate(
-            class_name,
-            xy=(x_min, y_min),
-            fontsize=10,
-            color='black',
-            ha='left',
-            va='top')
-
-    # Set the axis limits and remove axis labels
-    ax.set_xlim(0, target_width)
-    ax.set_ylim(0, target_height)
-    ax.axis('off')
-
-    # Add a border
-    # for _ in range(border_size):
-    #     ax.add_patch(plt.Rectangle((0, 0), target_width, target_height, fill=False, edgecolor='black', linewidth=1))
-
-    # Show the image
-    fig.savefig(f"/home/work/increased_en_data/BLT/result/low_loss/{im_type}.png")
-
+# TODO 나중에 실험 끝나고 '/' 분리하는 거 지우기 
 def create_folder(conditional, exp, base_path):
     # 폴더 경로 생성
+    # /base_path/실험 번호(exp6)/a/
+    # /base_path/실험 번호(exp6)/a_s/
     exp = exp.split('/')[1]
     if conditional == "a":
         folder_path = os.path.join(base_path, exp.split('_')[0], conditional)
@@ -270,12 +126,12 @@ def create_folder(conditional, exp, base_path):
     
     # 폴더 생성
     os.makedirs(folder_path, exist_ok=True)
-    print(f"폴더가 생성되었습니다: {folder_path}")
 
     return folder_path
 
 def plot_sample_with_PIL(data,
                 workdir,
+                base_path,
                 dataset_type="CATEGORIZED",
                 border_size=1,
                 thickness=4,
@@ -295,17 +151,14 @@ def plot_sample_with_PIL(data,
         border_size: Width of the border added to the image.
         thickness: It is the thickness of the rectangle border line in px.
         Thickness of -1 px will display each box with a colored box without text.
-
-    Returns:
-        The image as an np.ndarray of np.uint8 type.
     """
     image = None
     if image_link is not None and idx is not None :
       try:
         image = Image.open(BytesIO(requests.get(image_link).content))
         target_width, target_height = image.size
+        # inference 결과를 시각화한 배경은 원본 이미지 대신 흰 배경으로 대체 
         if im_type.endswith("_infer") : image = Image.new("RGB", (target_width, target_height), "white")
-        # target_width, target_height = image.size
       except:
           print(f"Error at loading image, {image_link}")
           image = None
@@ -314,9 +167,9 @@ def plot_sample_with_PIL(data,
 
     if image is None : return
 
+    # pad 부분을 없애고 decode한 sequence부분만 추출 
     data = data[data >= 0]
 
-    # blank_image  = Image.new("RGB", (target_width, target_height), "white")
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default()
     text_color = (0, 0, 0)
@@ -333,14 +186,12 @@ def plot_sample_with_PIL(data,
           x_max = np.round(center_x + width + 1e-4)
           y_min = np.round(center_y + 1e-4)
           y_max = np.round(center_y + height + 1e-4)
-
         elif composition == "ltrb" :
           print("ltrb visualization")
           x_min = np.round(center_x + 1e-4)
           x_max = np.round(width + 1e-4)
           y_min = np.round(center_y + 1e-4)
           y_max = np.round(height + 1e-4)
-
         else :
           print("default visualization")
           x_min = np.round(center_x - width / 2. + 1e-4)
@@ -348,23 +199,21 @@ def plot_sample_with_PIL(data,
           y_min = np.round(center_y - height / 2. + 1e-4)
           y_max = np.round(center_y + height / 2. + 1e-4)
 
+        # 0과 32사이로 discretization된 것에서 원본 이미지에 맞춰서 layout 값 복구
         x_min = round(np.clip(x_min / 31., 0., 1.) * target_width)
         y_min = round(np.clip(y_min / 31., 0., 1.) * target_height)
         x_max = round(np.clip(x_max / 31., 0., 1.) * target_width)
         y_max = round(np.clip(y_max / 31., 0., 1.) * target_height)
 
-        # Create a figure and axis for Matplotlib
         print(class_name, (x_min, y_min), x_max - x_min, y_max - y_min)
 
         draw.rectangle((x_min, y_min, x_max, y_max), outline=color, width=thickness)
         draw.text((x_min, y_min), class_name, fill=text_color, font=font)
 
-    # Show the image
-
-    basePath = "/home/work/increased_en_data/BLT/result"
+    # Save the image
+    basePath = os.path.join(base_path, "result")
     folder_path = create_folder(conditional, workdir, basePath)
 
     if folder_path is None : return
 
     image.save(os.path.join(folder_path, f"{im_type}.png"))
-

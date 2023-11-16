@@ -30,8 +30,8 @@ from ml_collections import config_flags
 import tensorflow as tf
 from trainers import bert_layout_trainer
 from trainers import transformer_trainer
-# import cv2
-import plot_layout
+
+from utils import plot_layout
 import numpy as onp
 import json
 import os
@@ -67,7 +67,6 @@ def create_file_name(conditional, exp):
 
     return file_name
 
-
 def main(argv):
   del argv
 
@@ -91,7 +90,7 @@ def main(argv):
   trainer = get_trainer_cls(FLAGS.config, FLAGS.workdir)
   if FLAGS.mode == "train":
     trainer.train()
-  elif FLAGS.mode == "test":
+  elif FLAGS.mode == "test":  # 데이터 1개씩 시각화
     while(1) :
       idx = None
       idx = int(input("enter the index number (or -1 to quit): "))
@@ -100,36 +99,38 @@ def main(argv):
       iteration = int(input("enter iter: "))
       condition = input("enter decode condition (a or a+s): ")
 
+      # /trainers/bert_layout_trainer.py 참고 
       generated_samples, real_samples, image_link = trainer.test_with_backgroundImage(conditional=condition, iterative_nums=[iteration, iteration, iteration], idx=idx)
+      # 생성된 sample을 시각화
       plot_layout.plot_sample_with_PIL(
         data=onp.array(generated_samples[0][-1]),
         workdir=FLAGS.workdir,
+        base_path=FLAGS.config.result_path,
         dataset_type="CATEGORIZED",
-        border_size= 1,
-        thickness= 6,
         im_type=f"{idx}_iter{iteration}_infer",
         idx=idx, 
         image_link=image_link,
         conditional=condition,
         composition=FLAGS.config.composition)
       print()
+      # 원본 데이터를 시각화 
       plot_layout.plot_sample_with_PIL(
         data=onp.array(real_samples[0]),
         workdir=FLAGS.workdir,
+        base_path=FLAGS.config.result_path,
         dataset_type="CATEGORIZED",
-        border_size= 1,
-        thickness= 6,
         im_type=f"{idx}_iter{iteration}_real",
         idx=idx,
         image_link=image_link,
         conditional=condition,
         composition=FLAGS.config.composition)
-  elif FLAGS.mode == "eval":
+  elif FLAGS.mode == "eval": # 데이터 100개를 뽑아서 성능 평가 (지표 IOU): IOU값이 작을 수록 성능이 좋음
     total_iteration = int(input("enter total iteration: "))
     condition = input("enter decode condition (a or a+s): ")
     report = []
     for iteration in range(1, total_iteration+1) :
-      generated_samples, real_samples = trainer.test(conditional=condition, iterative_nums=[iteration, iteration, iteration])
+      generated_samples, real_samples = trainer.test(conditional=condition, sample_step_num=100, iterative_nums=[iteration, iteration, iteration])
+      # TODO iou 전용 metric 함수 만들기 
       result = trainer.evaluate_metrics(generated_samples=generated_samples,
                                         real_samples=real_samples,
                                         conditional=condition,
@@ -137,7 +138,7 @@ def main(argv):
 
       report.append(result)
 
-    report_path = "/home/work/increased_en_data/BLT/report"
+    report_path = os.path.join(FLAGS.config.result_path, "report")
     file_name = create_file_name(condition, FLAGS.workdir)
 
     # assert file_name != None
