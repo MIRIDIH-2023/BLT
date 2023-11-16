@@ -13,11 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Information about the RICO dataset.
-
-See http://interactionmining.org/rico for more details.
-"""
-
 import frozendict
 
 COLORS = {
@@ -53,7 +48,3 @@ NUMBER_LABELS = len(ID_TO_LABEL)
 
 LABEL_TO_ID_ = frozendict.frozendict(
     {l: i for i, l in ID_TO_LABEL.items()})
-
-# complete : width, height 고민하지마! 
-FRAME_WIDTH, FRAME_HEIGHT = 1440 // 3, 2560 // 3
-
