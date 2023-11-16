@@ -25,11 +25,17 @@ def get_config():
   # Exp info
   config.dataset_path = "/home/work/increased_en_data/BLT/data2/"
   config.dataset = "CATEGORIZED"
-  config.vocab_size = 154
+  config.vocab_size = 154  # self.offset_class: 4 + self.number_classes + (self.resolution_w: 32 + self.resolution_h: 32) * 2
   config.experiment = "bert_layout"
   config.model_class = "bert_layout"
   config.image_size = 256
-  config.composition = "default" # default, ltwh, ltrb
+
+  # 추가한 부분
+  config.result_path = "/home/work/increased_en_data/BLT/" # inference한 결과 시각화 이미지 저장 경로(result_path/result)와 성능 평가 저장 경로(result_path/report)를 위해 지정하는 경로
+  # 데이터 input format 구성 방식 
+  config.composition = "ltrb" # default, ltwh, ltrb
+  # 데이터의 input 요소를 정렬하는 방식
+  # config.train_shuffle = False일 경우에만 해당
   config.sort_by = "top_left_to_bottom_right" # top_left_to_bottom_right, distance_from_center
 
   # Training info
@@ -42,7 +48,7 @@ def get_config():
   config.train_shuffle = True
   config.eval_pad_last_batch = False
   config.eval_batch_size = 64
-  config.num_train_steps = 50_000
+  config.num_train_steps = 110_000
   config.checkpoint_every_steps = 5000
   config.eval_every_steps = 1000
   config.num_eval_steps = 100
@@ -64,7 +70,6 @@ def get_config():
   config.label_smoothing = 0.0
   config.sampling_method = "top-p"
   config.use_vertical_info = False
-  # config.test_checkpoint_dir = "/home/work/increased_en_data/BLT/exp3_get_low_loss/checkpoints"
 
   # Optimizer info
   config.optimizer = ml_collections.ConfigDict()
