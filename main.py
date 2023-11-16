@@ -131,10 +131,10 @@ def main(argv):
     for iteration in range(1, total_iteration+1) :
       generated_samples, real_samples = trainer.test(conditional=condition, sample_step_num=100, iterative_nums=[iteration, iteration, iteration])
       # TODO iou 전용 metric 함수 만들기 
-      result = trainer.evaluate_metrics(generated_samples=generated_samples,
-                                        real_samples=real_samples,
-                                        conditional=condition,
-                                        composition=FLAGS.config.composition)
+      result = trainer.evaluate_IOU_metrics_only(generated_samples=generated_samples,
+                                                real_samples=real_samples,
+                                                conditional=condition,
+                                                composition=FLAGS.config.composition)
 
       report.append(result)
 

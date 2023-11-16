@@ -47,9 +47,8 @@ def normalize_bbox(layout,
 
   return layout[:, 1:]
 
-
-def get_layout_iou(layout, composition):
-  """Computes the IOU on the layout level.
+def get_text_layout_iou(layout, composition):
+  """Computes the IOU on the text layout level.
 
   Args:
     layout: 1-d integer array in which in which every 5 elements form a group
@@ -63,6 +62,7 @@ def get_layout_iou(layout, composition):
   layout_channels = []
   for bbox in layout:
     canvas = np.zeros((32, 32, 1), dtype=np.float32)
+    # category_id가 0~15 일 때, 즉 text category일 때만 IOU 계산에 사용함, 그렇지 않은 category는 건너뜀 
     if bbox[0] not in range(16) : continue
     width, height = bbox[1], bbox[2]
     center_x, center_y = bbox[3], bbox[4]
@@ -82,6 +82,39 @@ def get_layout_iou(layout, composition):
       max_x = round(center_x + width / 2. + 1e-4)
       min_y = round(center_y - height / 2. + 1e-4)
       max_y = round(center_y + height / 2. + 1e-4)
+    canvas[min_x:max_x, min_y:max_y] = 1.
+    layout_channels.append(canvas)
+  if not layout_channels:
+    return 0.
+  sum_layout_channel = np.sum(np.concatenate(layout_channels, axis=-1), axis=-1)
+  overlap_area = np.sum(np.greater(sum_layout_channel, 1.))
+  bbox_area = np.sum(np.greater(sum_layout_channel, 0.))
+  if bbox_area == 0.:
+    return 0.
+  return overlap_area / bbox_area
+
+def get_layout_iou(layout):
+  """Computes the IOU on the layout level.
+
+  Args:
+    layout: 1-d integer array in which in which every 5 elements form a group
+      of box in the format (wdith, height, center_x, center_y).
+
+  Returns:
+    The value for the overlap index. If no overlaps are found, 0 is returned.
+  """
+  layout = np.array(layout, dtype=np.float32)
+  layout = np.reshape(layout, (-1, 5))
+  layout_channels = []
+  for bbox in layout:
+    canvas = np.zeros((32, 32, 1), dtype=np.float32)
+    width, height = bbox[1], bbox[2]
+    center_x, center_y = bbox[3], bbox[4]
+    # Avoid round behevior at 0.5.
+    min_x = round(center_x - width / 2. + 1e-4)
+    max_x = round(center_x + width / 2. + 1e-4)
+    min_y = round(center_y - height / 2. + 1e-4)
+    max_y = round(center_y + height / 2. + 1e-4)
     canvas[min_x:max_x, min_y:max_y] = 1.
     layout_channels.append(canvas)
   if not layout_channels:
