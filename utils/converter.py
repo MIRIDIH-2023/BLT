@@ -94,12 +94,6 @@ def get_image_label(image_info, text_infos):
                     text_infos['text_coord_tb'][i][1]]
         text_area = (text_box[2] - text_box[0]) * (text_box[3] - text_box[1])
 
-        #overlap_box = [max(image_box[0], text_box[0]),
-        #               max(image_box[1], text_box[1]),
-        #               min(image_box[2], text_box[2]),
-        #               min(image_box[3], text_box[3])]
-        #overlap_area = (overlap_box[2] - overlap_box[0]) * (overlap_box[3] - overlap_box[1])
-
         overlap_x = max(0, min(image_box[2], text_box[2]) - max(image_box[0], text_box[0]))
         overlap_y = max(0, min(image_box[3], text_box[3]) - max(image_box[1], text_box[1]))
         overlap_area = overlap_x * overlap_y
@@ -112,14 +106,9 @@ def get_image_label(image_info, text_infos):
           continue
         overlap_ratio = overlap_area / text_area
 
-        # print("overlap ratio ", overlap_ratio)
-        # print("possible_overlap", possible_max_overlap_area_per_text)
-        # print()
-
         if overlap_ratio > max_overlap_ratio:
             max_overlap_ratio = overlap_ratio
 
-    # print()
     if max_overlap_ratio > 0.8:
         return "image_with_text"
     elif max_overlap_ratio > 0.2:
@@ -128,8 +117,11 @@ def get_image_label(image_info, text_infos):
         return "image_without_text"
 
 # path: data가 있는 폴더 경로
-# label_names: 사용하려는 XML tag이름
-# label에 할당된 id값이 저장된 dictionary
+'''
+label_names: 사용하려는 XML tag이름
+label_to_id: label에 할당된 id값이 저장된 dictionary
+dataset/categorized_info.py 참고
+'''
 # idx(int): test시 사용되는 변수, 데이터 리스트에서 어떤 데이터를 뽑아 시각화할지 명시하는 값
 # with_background_test: inference 결과를 시각화할 때 thumbnail이미지를 넣을 것인지 명시
 def load_categorized(path, label_names, label_to_id, idx, with_background_test=False, composition="defualt") :
@@ -137,6 +129,7 @@ def load_categorized(path, label_names, label_to_id, idx, with_background_test=F
     image_link=None
 
     file_name_lst = os.listdir(path)
+    # 시각화할 경우 file 1개만 가져옴 
     file_name_lst = [file_name_lst[idx]] if with_background_test else tqdm(file_name_lst) 
     for file_name in file_name_lst :
         # pickle file open
@@ -186,7 +179,12 @@ def load_categorized(path, label_names, label_to_id, idx, with_background_test=F
                 
                 if idx == 3 and label == "text_" :
                     label += f"3_{pair[1]}" if pair[1] < 4 else "3_3_over"
-                    
+
+            
+            # data sequence 구성 - XML 요소 별 bbox 정보 활용 
+            # default : <category id> <width> <height> <center x> <center y>
+            # ltwh : <category id> <width> <height> <left top x> <left top y>
+            # ltrb : <category id> <right bottom x> <right bottom y> <center x> <center y>
             template["children"].append({
                 "category_id" : label_to_id[label],
                 "center" : [(pair[2]-pair[4]/2.), (pair[3]-pair[5]/2.)] if composition == "ltwh" or composition == "ltrb" else [pair[2], pair[3]],
@@ -229,6 +227,8 @@ def load_categorized(path, label_names, label_to_id, idx, with_background_test=F
                 if (tb[0] < top or bottom < tb[1]) :
                     is_back_tb = False
 
+            # 아래 주석 처리한 코드는 이미지 category 종류를 세분화한 실험부터 사용하지 않음
+            # image가 text의 bounding box의 좌표가 모두 겹치는 경우 사용하지 않는다는 코드 
             # if lr_dup and tb_dup : continue
 
             # XML tag중 chart와 grid는 그대로 category로 사용
@@ -240,9 +240,14 @@ def load_categorized(path, label_names, label_to_id, idx, with_background_test=F
                 else :
                     label = get_image_label(info, text_infos)
 
-            # background는 안 씀
+            # 아래 코드는 이미지 category 종류를 세분화한 실험부터 사용함
+            # category가 background로 분류될 경우 학습에 사용하지 않음 
             if label == "background" : continue
 
+            # data sequence 구성 - XML 요소 별 bbox 정보 활용 
+            # default : <category id> <width> <height> <center x> <center y>
+            # ltwh : <category id> <width> <height> <left top x> <left top y>
+            # ltrb : <category id> <right bottom x> <right bottom y> <center x> <center y>
             template["children"].append({
                 "category_id" : label_to_id[label],
                 "center" : [(center_x-width_/2.), (center_y-height_/2.)] if composition == "ltwh" or composition == "ltrb" else [center_x, center_y],
@@ -252,15 +257,28 @@ def load_categorized(path, label_names, label_to_id, idx, with_background_test=F
 
         if with_background_test : image_link = json_data["thumbnail_url"]
 
+        # XML tag가 분류되지 않아서 template 데이터를 만들 수 없는 경우 학습에 사용하지 않음 
         if len(template["children"]) == 0 : continue
         
         data.append(template)
     
     return data, image_link
 
-def miri_load(path, label_names, label_to_id) :
+
+# 기업에서 제공한 XML tag를 분류하지 않고 실험할 때 사용하는 함수
+# path: data가 있는 폴더 경로
+'''
+label_names: 사용하려는 XML tag이름
+label_to_id: label에 할당된 id값이 저장된 dictionary
+dataset/categorized_info.py 참고
+'''
+# idx(int): test시 사용되는 변수, 데이터 리스트에서 어떤 데이터를 뽑아 시각화할지 명시하는 값
+# with_background_test: inference 결과를 시각화할 때 thumbnail이미지를 넣을 것인지 명시
+def miri_load(path, label_names, label_to_id, idx, with_background_test=False, composition="defualt") :
     data = []
+    image_link=None
     file_name_lst = tqdm(os.listdir(path))
+    file_name_lst = [file_name_lst[idx]] if with_background_test else tqdm(file_name_lst) 
     for file_name in file_name_lst :
         # pickle file open
         file_path = os.path.join(path, file_name)
@@ -305,6 +323,10 @@ def miri_load(path, label_names, label_to_id) :
                 "height" : height_
             })
 
+        if with_background_test : image_link = json_data["thumbnail_url"]
+
+        if len(template["children"]) == 0 : continue
+
         data.append(template)
 
-    return data
+    return data, image_link
