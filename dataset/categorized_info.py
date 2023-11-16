@@ -45,9 +45,6 @@ COLORS = {
     "GRID": (103, 58, 184)
 }
 
-# "image_partially_with_text": (24, 148, 22),
-#     "image_without_text": (63, 134, 221),
-
 LABEL_NAMES = (
     "text_0_1",
     "text_0_2",
@@ -92,7 +89,3 @@ NUMBER_LABELS = len(ID_TO_LABEL)
 
 LABEL_TO_ID_ = frozendict.frozendict(
     {l: i for i, l in ID_TO_LABEL.items()})
-
-# complete : width, height 고민하지마! 
-FRAME_WIDTH, FRAME_HEIGHT = 1440 // 3, 2560 // 3
-
