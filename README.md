@@ -1,23 +1,8 @@
 # Bidirectional Layout Transformer (BLT)
 
-This repository contains the code and models for the following paper:
-
 **[BLT: Bidirectional Layout Transformer for Controllable Layout Generation](https://arxiv.org/abs/2112.05112)** In ECCV'22.
 
-
-If you find this code useful in your research then please cite
-
-```
-@article{kong2021blt,
-  title={BLT: Bidirectional Layout Transformer for Controllable Layout Generation},
-  author={Kong, Xiang and Jiang, Lu and Chang, Huiwen and Zhang, Han and Hao, Yuan and Gong, Haifeng and Essa, Irfan},
-  journal={arXiv preprint arXiv:2112.05112},
-  year={2021}
-}
-```
-
-*Please note that this is not an officially supported Google product.*
-
+원본 코드 출처: [layout-blt](https://github.com/google-research/google-research/tree/master/layout-blt)
 
 # Introduction
 
@@ -29,25 +14,31 @@ Automatic generation of such layouts is important as we seek scale-able and dive
 conda env create -f environment.yml
 conda activate layout_blt
 ```
-and
 ```
 pip install jaxlib==0.1.69+cuda110 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
 
-## Check this out if you meet error when setting up environment
+### 출처로 남긴 원본 코드에서 환경 구축 시 유의 사항
 
-Replaces references to jax.Array with jax.numpy.DeviceArray.
+아래 링크를 참고해 **jax.numpy.DeviceArray**가 **jax.Array**
+로 변경되어 있는지 확인해주세요.
 
-[layout-blt/utils/layout_bert_fast_decode.py commit error](https://github.com/google-research/google-research/commit/89bd283df95962480163778d32ca62baec06392e#diff-d50bc9b308611a6985e4b5a22be2550862a65a951ab4c76909e6318076e9d07e)
+- [[commit error] layout-blt/utils/layout_bert_fast_decode.py](https://github.com/google-research/google-research/commit/89bd283df95962480163778d32ca62baec06392e#diff-d50bc9b308611a6985e4b5a22be2550862a65a951ab4c76909e6318076e9d07e)
+- [[commit error] layout-blt/utils/layout_fast_decode.py](https://github.com/google-research/google-research/commit/89bd283df95962480163778d32ca62baec06392e#diff-54e5487c1e5f718c0155f009478d5f506d842f21865583c1a8dd5fdd252314a8)
 
-[layout-blt/utils/layout_fast_decode.py commit error](https://github.com/google-research/google-research/commit/89bd283df95962480163778d32ca62baec06392e#diff-54e5487c1e5f718c0155f009478d5f506d842f21865583c1a8dd5fdd252314a8)
 
 
 ## Running
 
 ```
+# model_dir 이름 형식: 실험 번호와 실험 이름을 '_'로 구분
+# 예시) exp1_expName
 # Training a model
 python  main.py --config configs/${config} --workdir ${model_dir}
+
 # Testing a model
-python  main.py --config configs/${config} --workdir ${model_dir} --mode 'test'
+python  main.py --config configs/${config} --workdir ${model_dir} --mode test
+
+# Evaluating a model with IOU
+python main.py --config configs/${config} --workdir ${model_dir} --mode eval
 ```
