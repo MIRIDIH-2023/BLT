@@ -111,7 +111,7 @@ def rgb_to_hex(rgb):
 
     return "#{0}{1}{2}".format(r_hex, g_hex, b_hex)
 
-# TODO 나중에 실험 끝나고 '/' 분리하는 거 지우기 
+# 시각화한 결과 이미지를 workdir 이름에 따라서 저장하기 위해 폴더를 만드는 함수 
 def create_folder(conditional, exp, base_path):
     # 폴더 경로 생성
     # /base_path/실험 번호(exp6)/a/
@@ -180,6 +180,7 @@ def plot_sample_with_PIL(data,
 
         width, height, center_x, center_y = bounding_box
         # Adds a small number to make sure .5 can be rounded to 1.
+        # 실험을 할 때 sequence 구성 방식에 따라서 시각화를 위한 데이터 복원도 다르게 함 
         if composition == "ltwh" :
           print("ltwh visualization")
           x_min = np.round(center_x + 1e-4)
@@ -211,6 +212,18 @@ def plot_sample_with_PIL(data,
         draw.text((x_min, y_min), class_name, fill=text_color, font=font)
 
     # Save the image
+    '''
+      이미지가 저장되는 경로 예시
+        base_path
+            |____ result
+                    |_____ exp1
+                            |____ a
+                                  |____ image.png
+                            |____ a+s
+                            |____ custom
+                    |_____ exp2
+                            |____ a
+    '''
     basePath = os.path.join(base_path, "result")
     folder_path = create_folder(conditional, workdir, basePath)
 

@@ -368,8 +368,7 @@ class LayoutBaseTrainer(abc.ABC):
                                        dataset)
           if eval_metrics is not None:
             writer.write_scalars(step, eval_metrics.compute())
-
-        # TODO 시간되면 최소 loss일 때만 checkpoint 저장하는 걸로 바꿔보자잉 
+ 
         if step % self.config.checkpoint_every_steps == 0 or is_last_step:
           with report_progress.timed("checkpoint"):
             state = self.merge_model_state(state)

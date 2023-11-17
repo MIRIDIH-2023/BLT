@@ -38,7 +38,7 @@ class DatasetName(enum.Enum):
   MIRI = "MIRI"
   CATEGORIZED = "CATEGORIZED"
 
-
+# Dataset 이름에 따라 데이터를 가져오는 방식을 다르게 하는 함수 
 def load_data(path, label_names, label_to_id, dataset_name, idx, with_background_test=False, composition="defualt") :
   data = []
   image_link = None

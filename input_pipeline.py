@@ -91,10 +91,7 @@ def _normalize_entries(documents, shuffle=False, sort_by="top_left_to_bottom_rig
         "height": _clamp(element["height"] / document_height)
     }
 
-  # for debugging
-  # TODO 나중에 최종 정리하면서 지우기 
-  # print("======= Normalize! ======= shuffle: ", shuffle)
-  print("======= {} =======".format(sort_by))
+  if not shuffle : print("======= sort by: {} =======".format(sort_by))
   print("======= shuffle: {} ========".format(shuffle))
 
   for document in tqdm(documents):
@@ -106,7 +103,6 @@ def _normalize_entries(documents, shuffle=False, sort_by="top_left_to_bottom_rig
         document_width=document_width,
         document_height=document_height)
     normalized_children = [normalize_fn(c) for c in children]
-    # TODO sort_by config로 조작 가능하게 만들기 
     if shuffle:
       random.Random(0).shuffle(normalized_children)
       # normalized_children = normalized_children
@@ -154,8 +150,6 @@ def get_dataset(batch_size,
   assert batch_size % n_devices == 0
   ds_path = os.path.join(dataset_folder, ds_file)
   # shuffle = True if "train" not in ds_file else shuffle
-  # TODO config.train_shuffle 사용해서 shuffle 조작가능하게 만들기 
-  # shuffle = True
   dataset = LayoutDataset(dataset_name, ds_path, add_bos, shuffle, 
                           idx=idx, is_background_test=is_background_test, 
                           composition=composition, sort_by=sort_by)
@@ -200,7 +194,7 @@ def get_all_dataset(batch_size,
     datasets for various splits, the size of vocabulary and asset information.
   """
 
-  # train: 82296개, val: 10287개, test: 10287개 
+  # train: 82296개, val: 10287개, test: 10287개 (약 10만개 데이터 기준) 
   train_ds, vocab_size, pos_info = get_dataset(batch_size, dataset_folder,
                                                n_devices, "train/json_data",
                                                max_length,

@@ -491,7 +491,7 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
            max_asset_num=22,
            vertical_idx=0,
            idx=None):
-    """Runs a test run."""
+    """Runs a test with background image run."""
     rng = jax.random.PRNGKey(self.config.seed)
     np.random.seed(self.config.seed)
     # Make sure each host uses a different RNG.
@@ -552,10 +552,16 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
       n_device, n_batch, *remaining_dims = x.shape
       return np.array(x).reshape((n_device * n_batch,) + tuple(remaining_dims))
 
+    # sequence 배열에서 masking을 하지 않는 category id에 해당하는 부분의 index을 찾는 함수
+    # return: index list
     def find_indices_of_no_mask_id(test_batch, values, is_asset):
       true_indices = [index for index, value in enumerate((test_batch[0]-offset[0]).tolist()) if value in values and is_asset[0][index]]
       return true_indices
 
+    # masking을 하지 않는 category id가 위치하는 index 값 list를 바탕으로 masking하지 않는 부분을 추가하는 함수
+    # seq: <category_id> <width> <height> <center x> <center y> 가 반복됨
+    # 특정 category를 masking하지 않으면 이에 해당하는 bbox 정보도 masking하지 않음 
+    # return: index list
     def add_no_mask_to_size_and_pos(true_indices):
       indices = []
       for idx in true_indices :
@@ -563,6 +569,8 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
 
       return indices
     
+    # masking하지 않는 부분을 나타내는 배열
+    # return: no mask-True, mask-False로 이루어진 배열 입력 sequence의 차원과 동일 
     def masking_fn(no_mask_indices, position_ids) :
       is_no_mask = functools.reduce(lambda x, y: x | y, [
           position_ids == idx
@@ -571,24 +579,26 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
 
       return is_no_mask
 
+    # masking할 부분과 하지 않을 부분을 정하는 함수 
+    # return: 특정 부분이 3으로 masking된 test_batch
     def custom_decode(img_true_indices, txt_true_indices, masked_batch, test_batch, is_asset, position_ids) :
-      if len(img_true_indices) != 0 and len(txt_true_indices) != 0:
+      if len(img_true_indices) != 0 and len(txt_true_indices) != 0:             # text에 해당하는 id와 image에 해당하는 id가 존재할 때 
         mask_what = input("what do you want not to mask? (im or txt)")
-        if mask_what == "im" :
+        if mask_what == "im" :                                                  # image에 해당하는 부분을 masking하지 않음 
           no_mask_indices = add_no_mask_to_size_and_pos(img_true_indices)
           is_image = masking_fn(no_mask_indices, position_ids)
           res_batch = jnp.where(is_asset | is_image, test_batch, masked_batch)
-        else :
+        else :                                                                  # text에 해당하는 부분을 masking하지 않음 
           no_mask_indices = add_no_mask_to_size_and_pos(txt_true_indices)
           is_text = masking_fn(no_mask_indices, position_ids)
           res_batch = jnp.where(is_asset | is_text, test_batch, masked_batch)
-      elif len(txt_true_indices) != 0 : # text만 있는 경우는 첫 번째만 마스킹 하지 않음 
+      elif len(txt_true_indices) != 0 :                                         # text만 있는 경우는 입력 seq의 첫 번째만 마스킹 하지 않음 
         is_text = masking_fn([0, 1, 2, 3, 4], position_ids)
         res_batch = jnp.where(is_asset | is_text, test_batch, masked_batch)
-      elif len(img_true_indices) != 0 :
+      elif len(img_true_indices) != 0 :                                         # image만 있는 경우는 입력 seq의 첫 번째만 마스킹 하지 않음 
         is_image = masking_fn([0, 1, 2, 3, 4], position_ids)
         res_batch = jnp.where(is_asset | is_image, test_batch, masked_batch)
-      else : return jnp.where(is_asset, test_batch, masked_batch)
+      else : return jnp.where(is_asset, test_batch, masked_batch)               # 예외 case가 존재할 경우 'a' decode방식을 따름 
 
       return res_batch
     
@@ -630,6 +640,9 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
       logging.info("decoding time: (%.4f)", total_time)
       return generated_samples, real_samples, image_link
 
+    # 'a' : category부분만 남기고 나머지를 생성하는 decode 방식
+    # 'a+s' : category와 size만 남기고 나머지 위치를 생성하는 decode 방식
+    # 'custom으로 시작하는 이름' : 자세한 설명은 custom_decode 함수 참고 
     for idx, test_batch in enumerate(test_iter):
       if idx >= sample_step_num:
         break
@@ -668,13 +681,17 @@ class BERTLayoutTrainer(base_trainer.LayoutBaseTrainer):
           for i in range(1, self.layout_dim + 1)
       ])
 
-      # 조건에 따라서 inference를 달리 해봅시다!
+      # custom decode
       dataset_name = datasets_info.DatasetName(self.config.dataset)
       label_to_id = datasets_info.get_label_to_id_map(dataset_name)
+      # text id를 제외한 나머지 id를 list로 저장
       except_text_label = [value for key, value in label_to_id.items() if not key.startswith("text_")]
+      # text id를 list로 저장 
       text_label = [value for key, value in label_to_id.items() if key.startswith("text_")]
 
+      # test_batch의 real_sample에서 image에 해당하는 id가 있으면 해당 위치 index list 저장
       img_true_indices = find_indices_of_no_mask_id(test_batch, except_text_label, is_asset)
+      # test_batch의 real_sample에서 text에 해당하는 id가 있으면 해당 위치 index list 저장
       txt_true_indices = find_indices_of_no_mask_id(test_batch, text_label, is_asset)
 
       if conditional.startswith("custom"):

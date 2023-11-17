@@ -57,7 +57,6 @@ def get_trainer_cls(config, workdir):
     raise NotImplementedError(f"{config.model_class} is not Implemented")
   
 def create_file_name(conditional, exp):
-    exp = exp.split('/')[1]
     if conditional == "a":
         file_name = "report_{0}_{1}.json".format(exp, conditional)
     elif conditional == "a+s":
@@ -97,7 +96,7 @@ def main(argv):
       if idx == -1 : break
 
       iteration = int(input("enter iter: "))
-      condition = input("enter decode condition (a or a+s): ")
+      condition = input("enter decode condition (a or a+s or custom): ")
 
       # /trainers/bert_layout_trainer.py 참고 
       generated_samples, real_samples, image_link = trainer.test_with_backgroundImage(conditional=condition, iterative_nums=[iteration, iteration, iteration], idx=idx)
@@ -106,24 +105,25 @@ def main(argv):
         data=onp.array(generated_samples[0][-1]),
         workdir=FLAGS.workdir,
         base_path=FLAGS.config.result_path,
-        dataset_type="CATEGORIZED",
+        dataset_type=FLAGS.config.dataset,
         im_type=f"{idx}_iter{iteration}_infer",
         idx=idx, 
         image_link=image_link,
         conditional=condition,
         composition=FLAGS.config.composition)
       print()
-      # 원본 데이터를 시각화 
-      plot_layout.plot_sample_with_PIL(
-        data=onp.array(real_samples[0]),
-        workdir=FLAGS.workdir,
-        base_path=FLAGS.config.result_path,
-        dataset_type="CATEGORIZED",
-        im_type=f"{idx}_iter{iteration}_real",
-        idx=idx,
-        image_link=image_link,
-        conditional=condition,
-        composition=FLAGS.config.composition)
+      if condition != "none" :
+        # 원본 데이터를 시각화 , "none" 방식은 real_samples을 None으로 반환함 
+        plot_layout.plot_sample_with_PIL(
+          data=onp.array(real_samples[0]),
+          workdir=FLAGS.workdir,
+          base_path=FLAGS.config.result_path,
+          dataset_type=FLAGS.config.dataset,
+          im_type=f"{idx}_iter{iteration}_real",
+          idx=idx,
+          image_link=image_link,
+          conditional=condition,
+          composition=FLAGS.config.composition)
   elif FLAGS.mode == "eval": # 데이터 100개를 뽑아서 성능 평가 (지표 IOU): IOU값이 작을 수록 성능이 좋음
     total_iteration = int(input("enter total iteration: "))
     condition = input("enter decode condition (a or a+s): ")
@@ -138,6 +138,12 @@ def main(argv):
 
       report.append(result)
 
+    '''
+      iou 결과 값이 저장되는 경로
+      base_path
+            |___ report
+                    |____report.json
+    '''
     report_path = os.path.join(FLAGS.config.result_path, "report")
     file_name = create_file_name(condition, FLAGS.workdir)
 
