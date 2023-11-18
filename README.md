@@ -20,7 +20,7 @@ pip install jaxlib==0.1.69+cuda110 -f https://storage.googleapis.com/jax-release
 
 ### 출처로 남긴 원본 코드에서 환경 구축 시 유의 사항
 
-아래 링크를 참고해 **jax.numpy.DeviceArray**가 **jax.Array**
+아래 링크를 참고해 **jax.Array**가 **jax.numpy.DeviceArray**
 로 변경되어 있는지 확인해주세요.
 
 - [[commit error] layout-blt/utils/layout_bert_fast_decode.py](https://github.com/google-research/google-research/commit/89bd283df95962480163778d32ca62baec06392e#diff-d50bc9b308611a6985e4b5a22be2550862a65a951ab4c76909e6318076e9d07e)
