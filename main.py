@@ -35,6 +35,7 @@ from utils import plot_layout
 import numpy as onp
 import json
 import os
+import matplotlib.pyplot as plt
 
 FLAGS = flags.FLAGS
 
@@ -56,13 +57,17 @@ def get_trainer_cls(config, workdir):
   else:
     raise NotImplementedError(f"{config.model_class} is not Implemented")
   
-def create_file_name(conditional, exp):
+def create_file_name(conditional, exp, text_iou_only, iteration=0):
+    prefix = "text_iou" if text_iou_only == 1 else "iou"
     if conditional == "a":
-        file_name = "report_{0}_{1}.json".format(exp, conditional)
+      if iteration : file_name = "{0}_histogram_{1}_{2}_iter{3}.png".format(prefix, exp, conditional, iteration)
+      else :  file_name = "{0}_report_{1}_{2}.json".format(prefix, exp, conditional)
     elif conditional == "a+s":
-        file_name = "report_{0}_{1}.json".format(exp, conditional.replace('+', '_'))
+      if iteration : file_name = "{0}_histogram_{1}_{2}_iter{3}.png".format(prefix, exp, conditional.replace('+', '_'), iteration)
+      else :  file_name = "{0}_report_{1}_{2}.json".format(prefix, exp, conditional.replace('+', '_'))
     else :
-        file_name = "report_{0}_{1}.json".format(exp, conditional)
+      if iteration : file_name = "{0}_histogram_{1}_{2}_iter{3}.png".format(prefix, exp, conditional, iteration)
+      else :  file_name = "{0}_report_{1}_{2}.json".format(prefix, exp, conditional)
 
     return file_name
 
@@ -127,14 +132,29 @@ def main(argv):
   elif FLAGS.mode == "eval": # 데이터 100개를 뽑아서 성능 평가 (지표 IOU): IOU값이 작을 수록 성능이 좋음
     total_iteration = int(input("enter total iteration: "))
     condition = input("enter decode condition (a or a+s): ")
+    text_iou_only = int(input("enter 1 to calculate text iou only: "))
     report = []
+    report_path = os.path.join(FLAGS.config.result_path, "report")
+    if not os.path.exists(report_path): os.makedirs(report_path)
     for iteration in range(1, total_iteration+1) :
-      generated_samples, real_samples = trainer.test(conditional=condition, sample_step_num=100, iterative_nums=[iteration, iteration, iteration])
-      # TODO iou 전용 metric 함수 만들기 
-      result = trainer.evaluate_IOU_metrics_only(generated_samples=generated_samples,
+      generated_samples, real_samples = trainer.test(conditional=condition, sample_step_num=4000, iterative_nums=[iteration, iteration, iteration])
+      result, iou_values = trainer.evaluate_IOU_metrics_only(generated_samples=generated_samples,
                                                 real_samples=real_samples,
                                                 conditional=condition,
-                                                composition=FLAGS.config.composition)
+                                                composition=FLAGS.config.composition,
+                                                text_iou=True if text_iou_only == 1 else False)
+
+      file_name = create_file_name(condition, FLAGS.workdir, text_iou_only, iteration)
+      hist_path = os.path.join(report_path, "hist")
+      if not os.path.exists(hist_path): os.makedirs(hist_path)
+      file_path = os.path.join(hist_path, file_name)
+      plt.figure(figsize=(10, 6))
+      plt.hist(iou_values, bins=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], edgecolor='black')
+      plt.xlabel('IOU')
+      plt.ylabel('Count')
+      plt.title('Histogram of IOU Values')
+      plt.grid(True)
+      plt.savefig(file_path)
 
       report.append(result)
 
@@ -144,8 +164,7 @@ def main(argv):
             |___ report
                     |____report.json
     '''
-    report_path = os.path.join(FLAGS.config.result_path, "report")
-    file_name = create_file_name(condition, FLAGS.workdir)
+    file_name = create_file_name(condition, FLAGS.workdir, text_iou_only)
 
     # assert file_name != None
     data = { "report" : report }

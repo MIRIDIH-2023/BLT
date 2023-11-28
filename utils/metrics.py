@@ -47,6 +47,28 @@ def normalize_bbox(layout,
 
   return layout[:, 1:]
 
+def get_ltrb_from_composition(composition, bbox) :
+  width, height = bbox[1], bbox[2]
+  center_x, center_y = bbox[3], bbox[4]
+  # Avoid round behevior at 0.5.
+  if composition == "ltwh" :
+    min_x = round(center_x + 1e-4)
+    max_x = round(center_x + width + 1e-4)
+    min_y = round(center_y + 1e-4)
+    max_y = round(center_y + height + 1e-4)
+  elif composition == "ltrb" :
+    min_x = round(center_x + 1e-4)
+    max_x = round(width + 1e-4)
+    min_y = round(center_y + 1e-4)
+    max_y = round(height + 1e-4)
+  else :
+    min_x = round(center_x - width / 2. + 1e-4)
+    max_x = round(center_x + width / 2. + 1e-4)
+    min_y = round(center_y - height / 2. + 1e-4)
+    max_y = round(center_y + height / 2. + 1e-4)
+
+  return min_x, min_y, max_x, max_y
+
 def get_text_layout_iou(layout, composition):
   """Computes the IOU on the text layout level.
 
@@ -64,24 +86,8 @@ def get_text_layout_iou(layout, composition):
     canvas = np.zeros((32, 32, 1), dtype=np.float32)
     # category_id가 0~15 일 때, 즉 text category일 때만 IOU 계산에 사용함, 그렇지 않은 category는 건너뜀 
     if bbox[0] not in range(16) : continue
-    width, height = bbox[1], bbox[2]
-    center_x, center_y = bbox[3], bbox[4]
-    # Avoid round behevior at 0.5.
-    if composition == "ltwh" :
-      min_x = round(center_x + 1e-4)
-      max_x = round(center_x + width + 1e-4)
-      min_y = round(center_y + 1e-4)
-      max_y = round(center_y + height + 1e-4)
-    elif composition == "ltrb" :
-      min_x = round(center_x + 1e-4)
-      max_x = round(width + 1e-4)
-      min_y = round(center_y + 1e-4)
-      max_y = round(height + 1e-4)
-    else :
-      min_x = round(center_x - width / 2. + 1e-4)
-      max_x = round(center_x + width / 2. + 1e-4)
-      min_y = round(center_y - height / 2. + 1e-4)
-      max_y = round(center_y + height / 2. + 1e-4)
+    min_x, min_y, max_x, max_y = get_ltrb_from_composition(composition, bbox)
+
     canvas[min_x:max_x, min_y:max_y] = 1.
     layout_channels.append(canvas)
   if not layout_channels:
@@ -92,6 +98,37 @@ def get_text_layout_iou(layout, composition):
   if bbox_area == 0.:
     return 0.
   return overlap_area / bbox_area
+
+def get_iou_real_gen(g_layout, r_layout, composition) :
+  g_layout = np.array(g_layout, dtype=np.float32)
+  g_layout = np.reshape(g_layout, (-1, 5))
+  r_layout = np.array(r_layout, dtype=np.float32)
+  r_layout = np.reshape(r_layout, (-1, 5))
+
+  iou_sum = 0
+  iou_count = 0
+  for g_bbox, r_bbox in zip(g_layout, r_layout):
+    g_l, g_t, g_r, g_b = get_ltrb_from_composition(composition, g_bbox)
+    r_l, r_t, r_r, r_b = get_ltrb_from_composition(composition, r_bbox)
+
+    # Calculate intersection area
+    intersection_area = max(0, min(g_r, r_r) - max(g_l, r_l)) * max(0, min(g_b, r_b) - max(g_t, r_t))
+
+    # Calculate union area
+    g_bbox_area = np.abs(g_r - g_l) * np.abs(g_b - g_t)
+    r_bbox_area = np.abs(r_r - r_l) * np.abs(r_b - r_t)
+    union_area = g_bbox_area + r_bbox_area - intersection_area
+
+    # Calculate IOU
+    iou = intersection_area / union_area if union_area > 0 else 0
+
+    iou_sum += iou
+    iou_count += 1
+
+  res = iou_sum / iou_count if iou_count > 0 else 0
+
+  return res
+  
 
 def get_layout_iou(layout):
   """Computes the IOU on the layout level.

@@ -427,30 +427,33 @@ class LayoutBaseTrainer(abc.ABC):
                                 real_samples,
                                 eos_id=0,
                                 conditional="a+s",
-                                composition="default"):
+                                composition="default",
+                                text_iou=True):
     """Computing metrics."""
-    def convert_format_for_generated(layouts, eos_id):
+    def custom_convert_format(layouts, eos_id, is_gen=True):
       new_layouts = []
       for sample in layouts:
         sample = np.array(sample)
-        sample = sample[-1]
+        if is_gen : sample = sample[-1]
         if np.nonzero(sample < eos_id)[0].shape[0] > 0:
           real_len = np.nonzero(sample < eos_id)[0][0]
           sample = sample[:real_len]
           new_layouts.append(sample.reshape(-1, 5))
       return new_layouts
-    generated_samples = convert_format_for_generated(generated_samples, eos_id)
+    generated_samples = custom_convert_format(generated_samples, eos_id)
+    real_samples = custom_convert_format(real_samples, eos_id, False)
 
     iou = []
-    for sample in generated_samples:
-      iou.append(metrics.get_text_layout_iou(sample, composition))
+    for g_sample, r_sample in zip(generated_samples, real_samples):
+      if text_iou : iou.append(metrics.get_text_layout_iou(g_sample, composition))
+      else : iou.append(metrics.get_iou_real_gen(g_sample, r_sample, composition))
     def avg(a):
       return sum(a)/len(a)
     rst = {
         "iou": avg(iou),
     }
 
-    return rst
+    return rst, iou
 
   @abc.abstractmethod
   def train_step(self, rng, state, batch, model_dict, logits_mask):
