@@ -19,7 +19,6 @@ os.makedirs(target_path, exist_ok=True)
 
 assert os.path.exists(splitted_data_path) and len(os.listdir(splitted_data_path)) == 0
 
-# TODO split하는 함수 정리하기
 # renderPos data만 따로 저장하는 로직
 files = os.listdir(source_path)
 assert len(files) != 0
